@@ -1,8 +1,12 @@
 {
-  "name": "Solana Anchor Dev",
-  "image": "mcr.microsoft.com/devcontainers/rust:1-bullseye",
-  "features": {
-    "ghcr.io/solana-labs/anchor/devcontainer-feature:1": {}
+  "name": "Solana Anchor Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
   },
-  "forwardPorts": [3000]
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "postCreateCommand": "bash /workspaces/install-solana.sh",
+  "features": {},
+  "remoteUser": "vscode"
 }
