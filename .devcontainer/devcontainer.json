@@ -1,0 +1,8 @@
+{
+  "name": "Solana Anchor Dev",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bullseye",
+  "features": {
+    "ghcr.io/solana-labs/anchor/devcontainer-feature:1": {}
+  },
+  "forwardPorts": [3000]
+}
