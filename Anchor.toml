@@ -1,0 +1,9 @@
+[programs.devnet]
+swapper = "REPLACE_YOUR_PROGRAM_ID"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "anchor test"
