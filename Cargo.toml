@@ -1,0 +1,8 @@
+[package]
+name = "swapper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = "0.24.2"
+anchor-spl = "0.24.2"
