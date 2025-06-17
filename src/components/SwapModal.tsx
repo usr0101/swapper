@@ -4,6 +4,7 @@ import { executeSwapTransaction, validateTransaction } from '../lib/solana';
 import { useWallet } from '../contexts/WalletContext';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { getPoolWalletData, getPool } from '../lib/pool-manager';
+import { getPoolWalletData as getPoolWalletFromSupabase } from '../lib/supabase';
 import { PublicKey } from '@solana/web3.js';
 
 interface SwapModalProps {
@@ -37,55 +38,67 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const accountCreationBuffer = 0.002; // Buffer for potential account creation
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // FIXED: Enhanced pool access check with better debugging
-  const checkPoolAccess = () => {
-    console.log('🔍 Checking pool access for swap modal...');
+  // CRITICAL FIX: Use Supabase directly for pool access check
+  const checkPoolAccess = async () => {
+    console.log('🔍 [SwapModal] Checking pool access for swap modal...');
     
-    const pool = getPool(collectionId);
+    const pool = await getPool(collectionId);
     if (!pool) {
       console.log('❌ Pool not found for collection:', collectionId);
       return false;
     }
     
-    console.log('🔍 Pool found, checking wallet data for:', pool.poolAddress);
-    const poolWalletData = getPoolWalletData(pool.poolAddress);
+    console.log('🔍 [SwapModal] Pool found, checking wallet data for:', pool.pool_address);
     
-    console.log('🔍 Pool wallet data check results:');
-    console.log('  - Wallet data found:', !!poolWalletData);
-    
-    if (poolWalletData) {
-      console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-      console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
-      console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
+    try {
+      // CRITICAL FIX: Use Supabase directly instead of pool manager
+      const poolWalletData = await getPoolWalletFromSupabase(pool.pool_address);
       
-      // ENHANCED: More thorough validation
-      const hasValidSecretKey = poolWalletData.secretKey && 
-                               poolWalletData.secretKey.trim() !== '' &&
-                               poolWalletData.secretKey.length > 10; // Basic length check
+      console.log('🔍 [SwapModal] Pool wallet data check results:');
+      console.log('  - Wallet data found:', !!poolWalletData);
       
-      const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
-      
-      console.log('  - Valid secret key:', hasValidSecretKey);
-      console.log('  - Private key flag set:', hasPrivateKeyFlag);
-      
-      const hasAccess = hasValidSecretKey && hasPrivateKeyFlag;
-      
-      console.log('✅ Final pool access result:', hasAccess);
-      
-      if (!hasAccess) {
-        console.log('❌ Pool access failed because:');
-        if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
-        if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
+      if (poolWalletData) {
+        console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
+        console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
+        console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
+        
+        // ENHANCED: More thorough validation
+        const hasValidSecretKey = poolWalletData.secretKey && 
+                                 poolWalletData.secretKey.trim() !== '' &&
+                                 poolWalletData.secretKey.length > 10; // Basic length check
+        
+        const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
+        
+        console.log('  - Valid secret key:', hasValidSecretKey);
+        console.log('  - Private key flag set:', hasPrivateKeyFlag);
+        
+        const hasAccess = hasValidSecretKey && hasPrivateKeyFlag;
+        
+        console.log('✅ [SwapModal] Final pool access result:', hasAccess);
+        
+        if (!hasAccess) {
+          console.log('❌ Pool access failed because:');
+          if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
+          if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
+        }
+        
+        return hasAccess;
+      } else {
+        console.log('❌ No wallet data found for pool');
+        return false;
       }
-      
-      return hasAccess;
-    } else {
-      console.log('❌ No wallet data found for pool');
+    } catch (error) {
+      console.error('❌ [SwapModal] Error checking pool access:', error);
       return false;
     }
   };
 
-  const hasPoolAccess = checkPoolAccess();
+  const [hasPoolAccess, setHasPoolAccess] = useState<boolean | null>(null);
+
+  // Check pool access on component mount
+  React.useEffect(() => {
+    checkPoolAccess().then(setHasPoolAccess);
+  }, [collectionId]);
 
   const handleConfirmSwap = async () => {
     if (!address || !wallet.publicKey) {
@@ -95,7 +108,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
     }
 
     // FAIL IMMEDIATELY if no pool access
-    if (!hasPoolAccess) {
+    if (hasPoolAccess === false) {
       setError('Swap not available: This pool does not have the necessary wallet access to execute swaps. Both NFTs must be exchanged simultaneously, but the pool cannot authorize the transfer of its NFT. Please contact the admin to enable swaps for this pool.');
       setSwapStatus('error');
       return;
@@ -189,15 +202,30 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       case 'validating':
         return 'Validating NFTs, collection, and swap requirements...';
       case 'processing':
-        return 'Executing swap on Solana blockchain...';
+        return 'Executing atomic swap on Solana blockchain...';
       case 'success':
-        return 'Swap completed successfully!';
+        return 'Atomic swap completed successfully!';
       case 'error':
         return error || 'Swap failed. Please try again.';
       default:
         return 'Review your NFT swap details';
     }
   };
+
+  // Show loading while checking pool access
+  if (hasPoolAccess === null) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-6 relative">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Checking Pool Access</h2>
+            <p className="text-gray-400">Verifying swap capability...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -226,7 +254,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               <div className="mb-4 p-3 rounded-lg border bg-green-500/10 border-green-500/20">
                 <div className="flex items-center space-x-2">
                   <Key className="h-4 w-4 text-green-400" />
-                  <span className="text-green-200 text-sm font-medium">Swap Available</span>
+                  <span className="text-green-200 text-sm font-medium">Atomic Swap Available</span>
                 </div>
                 <p className="text-xs mt-1 opacity-80 text-green-100">
                   Both NFTs will be exchanged simultaneously in one transaction
@@ -318,7 +346,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 )}
                 <div className="text-sm">
                   <p className={`font-medium mb-1 ${hasPoolAccess ? 'text-green-200' : 'text-red-200'}`}>
-                    {hasPoolAccess ? 'Transaction Ready' : 'Swap Unavailable'}
+                    {hasPoolAccess ? 'Atomic Transaction Ready' : 'Swap Unavailable'}
                   </p>
                   <p className={`${hasPoolAccess ? 'text-green-100/80' : 'text-red-100/80'}`}>
                     {hasPoolAccess 
@@ -343,7 +371,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 ? 'Connect Wallet First'
                 : !hasPoolAccess
                 ? 'Swap Not Available'
-                : 'Execute Swap'
+                : 'Execute Atomic Swap'
               }
             </button>
           </>
@@ -357,7 +385,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 <span className="text-blue-200">
                   {swapStatus === 'validating' 
                     ? 'Validating swap requirements...' 
-                    : 'Broadcasting transaction...'
+                    : 'Broadcasting atomic transaction...'
                   }
                 </span>
               </div>
@@ -384,10 +412,10 @@ export const SwapModal: React.FC<SwapModalProps> = ({
             <div className="mb-6">
               <div className="inline-flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 mb-4">
                 <CheckCircle className="h-4 w-4" />
-                <span className="text-green-200">Swap confirmed</span>
+                <span className="text-green-200">Atomic swap confirmed</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
-                Your NFT swap has been executed successfully! Both NFTs have been exchanged simultaneously and the swap fee has been sent to the fee collector.
+                Your NFT atomic swap has been executed successfully! Both NFTs have been exchanged simultaneously and the swap fee has been sent to the fee collector.
               </p>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
                 <p className="text-blue-200 text-sm">

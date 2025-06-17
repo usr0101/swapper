@@ -219,14 +219,15 @@ class PoolManager {
     };
   }
 
-  // ENHANCED: Get pool wallet data with better debugging
+  // CRITICAL FIX: Use Supabase directly instead of local storage
   async getPoolWalletData(poolAddress: string): Promise<any> {
-    console.log('🔍 Retrieving wallet data for pool:', poolAddress);
+    console.log('🔍 [PoolManager] Retrieving wallet data for pool:', poolAddress);
     
     try {
+      // FIXED: Always use Supabase, never local storage
       const walletData = await getPoolWalletFromDB(poolAddress);
       
-      console.log('🔍 Wallet data retrieval results:', {
+      console.log('🔍 [PoolManager] Wallet data retrieval results:', {
         found: !!walletData,
         hasSecretKey: !!(walletData?.secretKey && walletData.secretKey.trim() !== ''),
         hasPrivateKey: walletData?.hasPrivateKey,
@@ -236,7 +237,7 @@ class PoolManager {
       
       return walletData;
     } catch (error) {
-      console.error('❌ Error retrieving wallet data:', error);
+      console.error('❌ [PoolManager] Error retrieving wallet data:', error);
       return null;
     }
   }
@@ -342,7 +343,10 @@ export const getPool = (collectionId: string) => poolManager.getPool(collectionI
 export const updatePoolStats = (collectionId: string, nftCount: number, volume: number = 0) => 
   poolManager.updatePoolStats(collectionId, nftCount, volume);
 export const getPoolStats = () => poolManager.getPoolStats();
+
+// CRITICAL FIX: Use the pool manager's method which uses Supabase
 export const getPoolWalletData = (poolAddress: string) => poolManager.getPoolWalletData(poolAddress);
+
 export const exportPoolWallet = (poolAddress: string) => poolManager.exportPoolWallet(poolAddress);
 export const importPoolWallet = (poolAddress: string, walletData: string) => 
   poolManager.importPoolWallet(poolAddress, walletData);

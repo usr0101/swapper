@@ -63,21 +63,21 @@ export const SwapInterface: React.FC = () => {
 
   const selectedPool = availablePools.find(p => p.collection_id === selectedCollection);
 
-  // FIXED: Enhanced swap capability check with better debugging
+  // CRITICAL FIX: Use Supabase directly for wallet data check
   const checkSwapCapability = async (pool: PoolConfig) => {
     if (!pool) {
       console.log('❌ No pool provided for swap capability check');
       return false;
     }
     
-    console.log('🔍 Checking swap capability for pool:', pool.collection_id);
+    console.log('🔍 [SwapInterface] Checking swap capability for pool:', pool.collection_id);
     console.log('Pool address:', pool.pool_address);
     
     try {
-      // CRITICAL FIX: Use the pool address directly from the pool config
+      // CRITICAL FIX: Use Supabase directly instead of pool manager
       const poolWalletData = await getPoolWalletData(pool.pool_address);
       
-      console.log('🔍 Pool wallet data check results:');
+      console.log('🔍 [SwapInterface] Pool wallet data check results:');
       console.log('  - Wallet data found:', !!poolWalletData);
       
       if (poolWalletData) {
@@ -102,7 +102,7 @@ export const SwapInterface: React.FC = () => {
         // Pool has swap capability if ALL conditions are met
         const hasCapability = hasValidSecretKey && hasPrivateKeyFlag && publicKeyMatches;
         
-        console.log('✅ Final swap capability result:', hasCapability);
+        console.log('✅ [SwapInterface] Final swap capability result:', hasCapability);
         
         if (!hasCapability) {
           console.log('❌ Swap capability failed because:');
@@ -117,7 +117,7 @@ export const SwapInterface: React.FC = () => {
         return false;
       }
     } catch (error) {
-      console.error('❌ Error checking swap capability:', error);
+      console.error('❌ [SwapInterface] Error checking swap capability:', error);
       return false;
     }
   };
@@ -636,7 +636,7 @@ export const SwapInterface: React.FC = () => {
                     {hasSwapCapability ? (
                       <div className="text-green-400 text-xs flex items-center justify-center space-x-1">
                         <Key className="h-3 w-3" />
-                        <span>Swap available</span>
+                        <span>Atomic swap available</span>
                       </div>
                     ) : (
                       <div className="text-red-400 text-xs flex items-center justify-center space-x-1">
@@ -661,7 +661,7 @@ export const SwapInterface: React.FC = () => {
                     : !hasSwapCapability
                     ? 'Swap Not Available'
                     : canSwap
-                    ? 'Execute Swap'
+                    ? 'Execute Atomic Swap'
                     : 'Select both NFTs to continue'
                   }
                 </button>
