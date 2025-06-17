@@ -189,38 +189,105 @@ export const storePoolWallet = async (poolAddress: string, walletData: {
   secretKey: string;
   hasPrivateKey: boolean;
 }) => {
+  console.log('💾 Storing pool wallet in Supabase:', {
+    poolAddress,
+    publicKey: walletData.publicKey,
+    hasSecretKey: !!(walletData.secretKey && walletData.secretKey.trim() !== ''),
+    hasPrivateKey: walletData.hasPrivateKey,
+    secretKeyLength: walletData.secretKey ? walletData.secretKey.length : 0,
+  });
+
+  // CRITICAL FIX: Ensure we have valid data before storing
+  if (!walletData.publicKey || !poolAddress) {
+    throw new Error('Invalid wallet data: missing public key or pool address');
+  }
+
+  // CRITICAL FIX: Ensure hasPrivateKey is correctly set
+  const hasValidSecretKey = walletData.secretKey && walletData.secretKey.trim() !== '';
+  const finalHasPrivateKey = hasValidSecretKey && walletData.hasPrivateKey === true;
+
+  console.log('💾 Final wallet data being stored:', {
+    poolAddress,
+    publicKey: walletData.publicKey,
+    hasValidSecretKey,
+    originalHasPrivateKey: walletData.hasPrivateKey,
+    finalHasPrivateKey,
+  });
+
   const { data, error } = await supabase
     .from('pool_wallets')
     .upsert([{
       pool_address: poolAddress,
       public_key: walletData.publicKey,
-      encrypted_secret_key: encryptSecretKey(walletData.secretKey),
-      has_private_key: walletData.hasPrivateKey,
+      encrypted_secret_key: hasValidSecretKey ? encryptSecretKey(walletData.secretKey) : '',
+      has_private_key: finalHasPrivateKey,
     }])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Error storing pool wallet:', error);
+    throw error;
+  }
+
+  console.log('✅ Pool wallet stored successfully in Supabase');
   return data;
 };
 
 export const getPoolWalletData = async (poolAddress: string) => {
+  console.log('🔍 Retrieving pool wallet from Supabase for:', poolAddress);
+
   const { data, error } = await supabase
     .from('pool_wallets')
     .select('*')
     .eq('pool_address', poolAddress)
     .maybeSingle();
 
-  if (error) throw error;
-  
-  if (data) {
-    return {
-      publicKey: data.public_key,
-      secretKey: decryptSecretKey(data.encrypted_secret_key),
-      hasPrivateKey: data.has_private_key,
-    };
+  if (error) {
+    console.error('❌ Error retrieving pool wallet from Supabase:', error);
+    throw error;
   }
   
+  if (data) {
+    console.log('🔍 Raw Supabase wallet data:', {
+      found: true,
+      pool_address: data.pool_address,
+      public_key: data.public_key,
+      has_private_key: data.has_private_key,
+      has_encrypted_secret_key: !!(data.encrypted_secret_key && data.encrypted_secret_key.trim() !== ''),
+    });
+
+    // CRITICAL FIX: Properly decrypt and validate the secret key
+    let decryptedSecretKey = '';
+    try {
+      if (data.encrypted_secret_key && data.encrypted_secret_key.trim() !== '') {
+        decryptedSecretKey = decryptSecretKey(data.encrypted_secret_key);
+        console.log('🔓 Secret key decrypted successfully, length:', decryptedSecretKey.length);
+      } else {
+        console.log('⚠️ No encrypted secret key found in database');
+      }
+    } catch (decryptError) {
+      console.error('❌ Error decrypting secret key:', decryptError);
+      decryptedSecretKey = '';
+    }
+
+    const walletData = {
+      publicKey: data.public_key,
+      secretKey: decryptedSecretKey,
+      hasPrivateKey: data.has_private_key && decryptedSecretKey !== '',
+    };
+
+    console.log('✅ Final wallet data returned:', {
+      publicKey: walletData.publicKey,
+      hasSecretKey: !!(walletData.secretKey && walletData.secretKey.trim() !== ''),
+      hasPrivateKey: walletData.hasPrivateKey,
+      secretKeyLength: walletData.secretKey ? walletData.secretKey.length : 0,
+    });
+
+    return walletData;
+  }
+  
+  console.log('❌ No wallet data found in Supabase for pool:', poolAddress);
   return null;
 };
 
