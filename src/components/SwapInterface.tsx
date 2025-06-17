@@ -122,22 +122,33 @@ export const SwapInterface: React.FC = () => {
     }
   };
 
-  const [hasSwapCapability, setHasSwapCapability] = useState(false);
+  // CRITICAL FIX: Use proper loading state for swap capability
+  const [hasSwapCapability, setHasSwapCapability] = useState<boolean | null>(null);
+  const [checkingSwapCapability, setCheckingSwapCapability] = useState(false);
 
   // Check swap capability when pool is selected
   useEffect(() => {
     if (selectedPool) {
       console.log('🔄 Pool selected, checking swap capability...');
+      setCheckingSwapCapability(true);
+      setHasSwapCapability(null); // Reset to loading state
+      
       checkSwapCapability(selectedPool).then((result) => {
         console.log('🎯 Swap capability check completed:', result);
         setHasSwapCapability(result);
+        setCheckingSwapCapability(false);
+      }).catch((error) => {
+        console.error('Error checking swap capability:', error);
+        setHasSwapCapability(false);
+        setCheckingSwapCapability(false);
       });
     } else {
-      setHasSwapCapability(false);
+      setHasSwapCapability(null);
+      setCheckingSwapCapability(false);
     }
   }, [selectedPool]);
 
-  const canSwap = selectedPoolNFT && selectedUserNFT && hasSwapCapability;
+  const canSwap = selectedPoolNFT && selectedUserNFT && hasSwapCapability === true;
 
   // Load real NFTs when collection is selected
   useEffect(() => {
@@ -205,9 +216,11 @@ export const SwapInterface: React.FC = () => {
       // ADDED: Re-check swap capability after refresh
       if (selectedPool) {
         console.log('🔄 Re-checking swap capability after refresh...');
+        setCheckingSwapCapability(true);
         const newCapability = await checkSwapCapability(selectedPool);
         console.log('🎯 Updated swap capability:', newCapability);
         setHasSwapCapability(newCapability);
+        setCheckingSwapCapability(false);
       }
     }
   };
@@ -243,6 +256,8 @@ export const SwapInterface: React.FC = () => {
     setUserNFTs([]);
     setError('');
     setCollectionStats(null);
+    setHasSwapCapability(null);
+    setCheckingSwapCapability(false);
   };
 
   // Show maintenance message if platform is inactive
@@ -436,17 +451,23 @@ export const SwapInterface: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">{selectedPool.collection_name}</h3>
                   <div className="flex items-center space-x-3 text-sm text-gray-400">
                     <span>Fee: {selectedPool.swap_fee} SOL</span>
-                    {hasSwapCapability ? (
+                    {/* CRITICAL FIX: Show loading state while checking swap capability */}
+                    {checkingSwapCapability ? (
+                      <span className="text-blue-400 flex items-center space-x-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Checking...</span>
+                      </span>
+                    ) : hasSwapCapability === true ? (
                       <span className="text-green-400 flex items-center space-x-1">
                         <Key className="h-3 w-3" />
                         <span>Swap Ready</span>
                       </span>
-                    ) : (
+                    ) : hasSwapCapability === false ? (
                       <span className="text-red-400 flex items-center space-x-1">
                         <AlertTriangle className="h-3 w-3" />
                         <span>No Access</span>
                       </span>
-                    )}
+                    ) : null}
                     {collectionStats?.lastUpdated && (
                       <span className="text-green-400">• Live Data</span>
                     )}
@@ -456,8 +477,8 @@ export const SwapInterface: React.FC = () => {
             )}
           </div>
 
-          {/* Swap Capability Warning */}
-          {!hasSwapCapability && (
+          {/* Swap Capability Warning - Only show if definitely false, not while loading */}
+          {hasSwapCapability === false && !checkingSwapCapability && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
@@ -617,7 +638,7 @@ export const SwapInterface: React.FC = () => {
                           <p className="font-medium text-white">{selectedUserNFT.name}</p>
                         </div>
                       </div>
-                      <ArrowRightLeft className={`h-6 w-6 ${hasSwapCapability ? 'text-green-400' : 'text-red-400'}`} />
+                      <ArrowRightLeft className={`h-6 w-6 ${hasSwapCapability === true ? 'text-green-400' : 'text-red-400'}`} />
                       <div className="text-center">
                         <p className="text-sm text-gray-400">You Get</p>
                         <div className="flex items-center space-x-2 mt-2">
@@ -633,32 +654,40 @@ export const SwapInterface: React.FC = () => {
                     <div className="text-sm text-gray-400 mb-4">
                       Swap Fee: <span className="text-white font-medium">{selectedPool.swap_fee} SOL</span>
                     </div>
-                    {hasSwapCapability ? (
+                    {/* CRITICAL FIX: Show loading state while checking */}
+                    {checkingSwapCapability ? (
+                      <div className="text-blue-400 text-xs flex items-center justify-center space-x-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Checking swap capability...</span>
+                      </div>
+                    ) : hasSwapCapability === true ? (
                       <div className="text-green-400 text-xs flex items-center justify-center space-x-1">
                         <Key className="h-3 w-3" />
                         <span>Atomic swap available</span>
                       </div>
-                    ) : (
+                    ) : hasSwapCapability === false ? (
                       <div className="text-red-400 text-xs flex items-center justify-center space-x-1">
                         <AlertTriangle className="h-3 w-3" />
                         <span>Swap not available</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
                 <button
                   onClick={handleSwap}
-                  disabled={!canSwap}
+                  disabled={!canSwap || checkingSwapCapability}
                   className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 ${
-                    canSwap
+                    canSwap && !checkingSwapCapability
                       ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                       : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  {!selectedPoolNFT && !selectedUserNFT
+                  {checkingSwapCapability
+                    ? 'Checking Pool Access...'
+                    : !selectedPoolNFT && !selectedUserNFT
                     ? 'Select NFTs to Swap'
-                    : !hasSwapCapability
+                    : hasSwapCapability === false
                     ? 'Swap Not Available'
                     : canSwap
                     ? 'Execute Atomic Swap'
@@ -666,7 +695,7 @@ export const SwapInterface: React.FC = () => {
                   }
                 </button>
                 
-                {!hasSwapCapability && selectedPoolNFT && selectedUserNFT && (
+                {hasSwapCapability === false && selectedPoolNFT && selectedUserNFT && !checkingSwapCapability && (
                   <p className="text-red-400 text-sm">
                     This pool cannot execute swaps. The private key is not accessible.
                   </p>
