@@ -38,22 +38,28 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const accountCreationBuffer = 0.002; // Buffer for potential account creation
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // Prevent background scrolling when modal is open
+  // FIXED: Prevent background scrolling when modal is open
   useEffect(() => {
-    // Disable body scroll
-    document.body.style.overflow = 'hidden';
+    // Store current scroll position
+    const scrollY = window.scrollY;
+    
+    // Disable body scroll and fix position
     document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${window.scrollY}px`;
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
 
     return () => {
-      // Re-enable body scroll
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
+      // Re-enable body scroll and restore position
       document.body.style.position = '';
-      document.body.style.width = '';
       document.body.style.top = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -247,9 +253,9 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      {/* Mobile-optimized modal container */}
-      <div className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] sm:m-4 bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-0">
+      {/* FIXED: Full viewport modal container with proper positioning */}
+      <div className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] sm:m-4 bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative overflow-hidden">
         {/* Fixed header */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-b border-white/10">
           <button
@@ -471,21 +477,39 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         {/* Fixed footer with action buttons */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-t border-white/10">
           {swapStatus === 'pending' && (
+            <div className="flex space-x-3">
+              {/* ADDED: Cancel Swap button */}
+              <button
+                onClick={onClose}
+                className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all duration-200"
+              >
+                Cancel Swap
+              </button>
+              <button
+                onClick={handleConfirmSwap}
+                disabled={!wallet.connected || !hasPoolAccess}
+                className={`flex-1 py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+                  hasPoolAccess && wallet.connected
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                    : 'bg-gray-600 cursor-not-allowed'
+                } text-white`}
+              >
+                {!wallet.connected 
+                  ? 'Connect Wallet First'
+                  : !hasPoolAccess
+                  ? 'Swap Not Available'
+                  : 'Execute Swap'
+                }
+              </button>
+            </div>
+          )}
+
+          {(swapStatus === 'validating' || swapStatus === 'processing') && (
             <button
-              onClick={handleConfirmSwap}
-              disabled={!wallet.connected || !hasPoolAccess}
-              className={`w-full py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
-                hasPoolAccess && wallet.connected
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                  : 'bg-gray-600 cursor-not-allowed'
-              } text-white`}
+              onClick={onClose}
+              className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all duration-200"
             >
-              {!wallet.connected 
-                ? 'Connect Wallet First'
-                : !hasPoolAccess
-                ? 'Swap Not Available'
-                : 'Execute Swap'
-              }
+              Cancel Swap
             </button>
           )}
 
