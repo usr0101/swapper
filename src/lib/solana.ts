@@ -10,7 +10,7 @@ export const getConnection = () => {
 
 export const connection = getConnection();
 
-// Get fee collector address from Supabase admin settings
+// FIXED: Get fee collector address from Supabase admin settings
 const getFeeCollectorAddress = async (userWallet?: string) => {
   try {
     console.log('🔍 Loading fee collector from Supabase admin settings...');
@@ -172,7 +172,7 @@ export const getUserBalance = async (publicKey: PublicKey) => {
   }
 };
 
-// Enhanced NFT swap with Supabase integration
+// ENHANCED: Atomic NFT swap with proper transaction structure
 export const executeSwapTransaction = async (
   userWallet: PublicKey,
   userNFTMint: string,
@@ -181,7 +181,7 @@ export const executeSwapTransaction = async (
   wallet: any
 ) => {
   try {
-    console.log('🔄 Starting NFT swap with Supabase integration...');
+    console.log('🔄 Starting ATOMIC NFT swap transaction...');
     console.log('User wallet:', userWallet.toString());
     console.log('User NFT mint:', userNFTMint);
     console.log('Pool NFT mint:', poolNFTMint);
@@ -200,21 +200,23 @@ export const executeSwapTransaction = async (
     
     const connection = await getConnection();
     
+    // CRITICAL: Verify pool wallet access
     const poolWalletData = await getPoolWalletData(pool.pool_address);
     
     console.log('Pool wallet data found:', !!poolWalletData);
     console.log('Has secret key:', !!(poolWalletData && poolWalletData.secretKey));
     
     if (!poolWalletData || !poolWalletData.secretKey) {
-      throw new Error('Swap not possible: Pool wallet private key not found. This swap requires both NFTs to be exchanged simultaneously, but the pool cannot authorize the transfer of its NFT.');
+      throw new Error('ATOMIC SWAP FAILED: Pool wallet private key not found. Both NFTs must be exchanged simultaneously, but the pool cannot authorize the transfer of its NFT. This requires both parties to sign the same transaction.');
     }
     
-    console.log('✅ Pool wallet access confirmed - proceeding with swap');
+    console.log('✅ Pool wallet access confirmed - proceeding with ATOMIC swap');
     
     const networkInfo = await getCurrentNetworkInfo(userWallet.toString());
     console.log('Network:', networkInfo.network);
     
-    console.log('🔍 Step 1: Validating NFTs and collection...');
+    // STEP 1: Validate both NFTs exist and are from same collection
+    console.log('🔍 STEP 1: Validating NFTs and collection...');
     
     const userNFT = await searchNFTByMint(userNFTMint, userWallet.toString());
     const poolNFT = await searchNFTByMint(poolNFTMint, userWallet.toString());
@@ -227,37 +229,41 @@ export const executeSwapTransaction = async (
       throw new Error('Pool NFT not found or invalid');
     }
     
+    // Verify collection matching
     const userCollection = userNFT.collection || '';
     const poolCollection = poolNFT.collection || '';
     
     if (pool.collection_address && pool.collection_address !== '') {
       if (userCollection !== pool.collection_address || poolCollection !== pool.collection_address) {
-        throw new Error('Both NFTs must be from the same verified collection');
+        throw new Error('ATOMIC SWAP FAILED: Both NFTs must be from the same verified collection');
       }
     } else {
       if (userCollection !== poolCollection && userCollection !== '' && poolCollection !== '') {
-        throw new Error('Both NFTs must be from the same collection');
+        throw new Error('ATOMIC SWAP FAILED: Both NFTs must be from the same collection');
       }
     }
     
     console.log('✅ Collection verification passed');
     
-    console.log('🔍 Step 2: Verifying NFT ownership...');
+    // STEP 2: Verify ownership
+    console.log('🔍 STEP 2: Verifying NFT ownership...');
     
     if (userNFT.owner && userNFT.owner !== userWallet.toString()) {
-      throw new Error('You do not own this NFT');
+      throw new Error('ATOMIC SWAP FAILED: You do not own this NFT');
     }
     
     if (poolNFT.owner && poolNFT.owner !== pool.pool_address) {
-      throw new Error('Pool does not own the target NFT');
+      throw new Error('ATOMIC SWAP FAILED: Pool does not own the target NFT');
     }
     
     console.log('✅ Ownership verification passed');
     
-    console.log('🔧 Step 3: Building swap transaction...');
+    // STEP 3: Build ATOMIC transaction
+    console.log('🔧 STEP 3: Building ATOMIC swap transaction...');
     
     const transaction = new Transaction();
     
+    // Load pool keypair
     console.log('🔑 Loading pool keypair from stored secret key...');
     
     let poolKeypair;
@@ -282,9 +288,10 @@ export const executeSwapTransaction = async (
       
     } catch (error) {
       console.error('❌ Error loading pool keypair:', error);
-      throw new Error(`Failed to load pool wallet: ${error.message}`);
+      throw new Error(`ATOMIC SWAP FAILED: Failed to load pool wallet: ${error.message}`);
     }
     
+    // Calculate all required token accounts
     const userNFTAccount = await getAssociatedTokenAddress(
       new PublicKey(userNFTMint),
       userWallet
@@ -307,7 +314,8 @@ export const executeSwapTransaction = async (
     
     console.log('📋 Token accounts calculated');
     
-    console.log('💰 Step 4: Adding swap fee payment...');
+    // STEP 4: Add fee payment instruction (FIRST)
+    console.log('💰 STEP 4: Adding swap fee payment instruction...');
     
     const swapFeeLamports = Math.floor(pool.swap_fee * LAMPORTS_PER_SOL);
     
@@ -321,10 +329,11 @@ export const executeSwapTransaction = async (
       });
       
       transaction.add(feeTransferInstruction);
-      console.log('✅ Fee payment instruction added');
+      console.log('✅ Fee payment instruction added as FIRST instruction');
     }
     
-    console.log('🏗️ Step 5: Creating token accounts if needed...');
+    // STEP 5: Create associated token accounts if needed
+    console.log('🏗️ STEP 5: Creating token accounts if needed...');
     
     const userReceiveAccountInfo = await connection.getAccountInfo(userReceiveAccount);
     if (!userReceiveAccountInfo) {
@@ -352,8 +361,10 @@ export const executeSwapTransaction = async (
       );
     }
     
-    console.log('🔄 Step 6: Adding NFT transfer instructions...');
+    // STEP 6: Add ATOMIC NFT transfer instructions
+    console.log('🔄 STEP 6: Adding ATOMIC NFT transfer instructions...');
     
+    // Transfer 1: User's NFT to pool (user signs)
     transaction.add(
       createTransferInstruction(
         userNFTAccount,
@@ -363,6 +374,7 @@ export const executeSwapTransaction = async (
       )
     );
     
+    // Transfer 2: Pool's NFT to user (pool signs)
     transaction.add(
       createTransferInstruction(
         poolNFTAccount,
@@ -372,25 +384,42 @@ export const executeSwapTransaction = async (
       )
     );
     
-    console.log('✅ Swap configured - both NFTs will be exchanged simultaneously');
+    console.log('✅ ATOMIC swap configured - both NFTs will be exchanged simultaneously');
     
-    console.log('📝 Step 7: Preparing transaction for signing...');
+    // STEP 7: Prepare transaction for signing
+    console.log('📝 STEP 7: Preparing ATOMIC transaction for dual signing...');
     
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userWallet;
     
+    console.log('Transaction prepared with', transaction.instructions.length, 'instructions:');
+    transaction.instructions.forEach((instruction, index) => {
+      const programName = instruction.programId.equals(SystemProgram.programId) ? 'System Program (Fee Payment)' :
+                         instruction.programId.equals(TOKEN_PROGRAM_ID) ? 'Token Program (NFT Transfer)' :
+                         instruction.programId.equals(ASSOCIATED_TOKEN_PROGRAM_ID) ? 'Associated Token Program' :
+                         instruction.programId.toString();
+      console.log(`  ${index + 1}. ${programName}`);
+    });
+    
+    // STEP 8: DUAL SIGNING (Critical for atomic swap)
+    console.log('✍️ STEP 8: DUAL SIGNING for atomic execution...');
+    
+    // First, pool signs its part
     transaction.partialSign(poolKeypair);
     console.log('✅ Pool signed the transaction');
     
+    // Then user signs
     if (!wallet.signTransaction) {
-      throw new Error('Wallet does not support transaction signing');
+      throw new Error('ATOMIC SWAP FAILED: Wallet does not support transaction signing');
     }
     
     const signedTransaction = await wallet.signTransaction(transaction);
     console.log('✅ User signed the transaction');
+    console.log('🔒 ATOMIC transaction fully signed by both parties');
     
-    console.log('📡 Step 8: Broadcasting transaction...');
+    // STEP 9: Broadcast atomic transaction
+    console.log('📡 STEP 9: Broadcasting ATOMIC transaction...');
     
     const signature = await connection.sendRawTransaction(
       signedTransaction.serialize(),
@@ -401,8 +430,11 @@ export const executeSwapTransaction = async (
       }
     );
     
-    console.log('🚀 Transaction sent with signature:', signature);
+    console.log('🚀 ATOMIC transaction sent with signature:', signature);
     console.log('🔗 Explorer URL:', `${networkInfo.explorerUrl}/tx/${signature}`);
+    
+    // STEP 10: Wait for finalized confirmation
+    console.log('⏳ STEP 10: Waiting for ATOMIC transaction confirmation...');
     
     const finalizedConfirmation = await connection.confirmTransaction(
       {
@@ -414,21 +446,24 @@ export const executeSwapTransaction = async (
     );
     
     if (finalizedConfirmation.value.err) {
-      throw new Error('Transaction failed: ' + JSON.stringify(finalizedConfirmation.value.err));
+      throw new Error('ATOMIC SWAP FAILED: Transaction failed: ' + JSON.stringify(finalizedConfirmation.value.err));
     }
     
-    console.log('✅ Transaction finalized successfully');
+    console.log('✅ ATOMIC transaction finalized successfully');
     
-    console.log('📊 Step 9: Updating pool statistics...');
+    // STEP 11: Update pool statistics
+    console.log('📊 STEP 11: Updating pool statistics...');
     await updatePoolStats(collectionId, 0, pool.swap_fee);
     
-    console.log('🎉 SWAP COMPLETED SUCCESSFULLY!');
+    console.log('🎉 ATOMIC SWAP COMPLETED SUCCESSFULLY!');
+    console.log('🎉 Both NFTs have been exchanged simultaneously in a single atomic transaction');
+    console.log('💰 Fee payment processed atomically to:', feeCollectorAddress.toString());
     
     return {
       success: true,
       signature,
       explorerUrl: `${networkInfo.explorerUrl}/tx/${signature}`,
-      type: 'nft_swap',
+      type: 'atomic_nft_swap',
       timestamp: new Date().toISOString(),
       fee: pool.swap_fee,
       feeCollector: feeCollectorAddress.toString(),
@@ -440,28 +475,23 @@ export const executeSwapTransaction = async (
       instructions: transaction.instructions.length,
       hasPoolAccess: true,
       feeVerified: true,
-      note: 'Complete swap executed successfully - both NFTs transferred simultaneously with verified fee payment to configured collector',
+      atomicSwap: true,
+      note: 'ATOMIC SWAP: Both NFTs and fee payment executed simultaneously in a single transaction with dual signatures',
     };
     
   } catch (error) {
-    console.error('❌ Swap transaction failed:', error);
+    console.error('❌ ATOMIC SWAP FAILED:', error);
     
     if (error.message.includes('insufficient funds')) {
-      throw new Error('Insufficient SOL balance for transaction fees and swap fee');
+      throw new Error('ATOMIC SWAP FAILED: Insufficient SOL balance for transaction fees and swap fee');
     } else if (error.message.includes('User rejected')) {
-      throw new Error('Transaction was rejected by user');
+      throw new Error('ATOMIC SWAP FAILED: Transaction was rejected by user');
     } else if (error.message.includes('blockhash not found')) {
-      throw new Error('Network error - please try again');
-    } else if (error.message.includes('collection')) {
-      throw new Error(error.message);
-    } else if (error.message.includes('Pool wallet private key not found')) {
-      throw new Error(error.message);
-    } else if (error.message.includes('do not own')) {
-      throw new Error(error.message);
-    } else if (error.message.includes('Failed to load pool wallet')) {
-      throw new Error(error.message);
+      throw new Error('ATOMIC SWAP FAILED: Network error - please try again');
+    } else if (error.message.includes('ATOMIC SWAP FAILED')) {
+      throw new Error(error.message); // Pass through our custom atomic swap errors
     } else {
-      throw new Error('Swap failed: ' + error.message);
+      throw new Error('ATOMIC SWAP FAILED: ' + error.message);
     }
   }
 };
@@ -526,7 +556,7 @@ export const validateTransaction = async (userWallet: PublicKey, requiredSOL: nu
       swapFee: requiredSOL,
       buffer: 0.002,
       message: balance >= totalRequired 
-        ? 'Sufficient balance for swap and fees' 
+        ? 'Sufficient balance for atomic swap and fees' 
         : `Insufficient balance. Need ${totalRequired.toFixed(4)} SOL total (${requiredSOL} swap fee + 0.002 buffer), have ${balance.toFixed(4)} SOL`,
     };
   } catch (error) {
