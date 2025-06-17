@@ -213,7 +213,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
       // Prepare pool data with the selected address option
       let poolData = {
         ...formData,
-        collectionSymbol: formData.collectionName.substring(0, 10).toUpperCase().replace(/\s+/g, ''),
+        // REMOVED: collectionSymbol generation
         poolAddress: '',
         poolWalletData: null as any,
       };
@@ -226,11 +226,11 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         poolData.poolWalletData = generatedWallet;
       }
 
-      // Create the pool using the pool manager
+      // Create the pool using the pool manager (without collection symbol)
       await createNewPool(
         formData.collectionId,
         formData.collectionName,
-        poolData.collectionSymbol,
+        '', // Empty collection symbol
         formData.collectionImage,
         formData.collectionAddress,
         address,

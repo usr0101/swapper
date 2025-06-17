@@ -57,8 +57,7 @@ export const SwapInterface: React.FC = () => {
 
   const filteredPools = availablePools.filter(pool => {
     const matchesSearch = !searchTerm || 
-      pool.collection_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pool.collection_symbol.toLowerCase().includes(searchTerm.toLowerCase());
+      pool.collection_name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 

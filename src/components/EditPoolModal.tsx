@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Save, AlertTriangle, CheckCircle, Loader2, Copy } from 'lucide-react';
 import { updatePool } from '../lib/supabase';
 import { PoolConfig } from '../lib/supabase';
 
@@ -51,6 +51,18 @@ export const EditPoolModal: React.FC<EditPoolModalProps> = ({ pool, onClose, onS
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -96,7 +108,7 @@ export const EditPoolModal: React.FC<EditPoolModalProps> = ({ pool, onClose, onS
               <h2 className="text-2xl font-bold text-white">Edit Pool</h2>
               <p className="text-gray-400 mt-1">Update pool information</p>
               <p className="text-blue-200 text-sm mt-1">
-                Pool ID: {pool.collection_id} • Address: {pool.pool_address.slice(0, 8)}...{pool.pool_address.slice(-8)}
+                Pool ID: {pool.collection_id}
               </p>
             </div>
             <button
@@ -122,25 +134,43 @@ export const EditPoolModal: React.FC<EditPoolModalProps> = ({ pool, onClose, onS
             </div>
           )}
 
-          {/* Read-only fields */}
+          {/* Read-only fields with improved address display */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
             <h3 className="text-white font-medium mb-3">Pool Information (Read-only)</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-4 text-sm">
               <div>
                 <label className="block text-gray-400 mb-1">Collection ID</label>
                 <p className="text-white font-mono">{pool.collection_id}</p>
               </div>
-              <div>
-                <label className="block text-gray-400 mb-1">Collection Symbol</label>
-                <p className="text-white font-mono">{pool.collection_symbol}</p>
-              </div>
+              
               <div>
                 <label className="block text-gray-400 mb-1">Pool Address</label>
-                <p className="text-white font-mono">{pool.pool_address}</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-white font-mono">{formatAddress(pool.pool_address)}</p>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(pool.pool_address)}
+                    className="p-1 hover:bg-white/10 rounded transition-colors"
+                    title="Copy pool address"
+                  >
+                    <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                  </button>
+                </div>
               </div>
+              
               <div>
                 <label className="block text-gray-400 mb-1">Collection Address</label>
-                <p className="text-white font-mono">{pool.collection_address}</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-white font-mono">{formatAddress(pool.collection_address)}</p>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(pool.collection_address)}
+                    className="p-1 hover:bg-white/10 rounded transition-colors"
+                    title="Copy collection address"
+                  >
+                    <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

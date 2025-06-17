@@ -27,11 +27,11 @@ class PoolManager {
     }
   }
 
-  // Create a new pool for a collection
+  // Create a new pool for a collection (REMOVED collection symbol parameter)
   async createPool(
     collectionId: string,
     collectionName: string,
-    collectionSymbol: string,
+    collectionSymbol: string, // Keep for compatibility but ignore
     collectionImage: string,
     collectionAddress: string,
     creatorWallet: string,
@@ -75,11 +75,11 @@ class PoolManager {
 
       console.log('Creating pool with address:', finalPoolAddress);
 
-      // Create pool in database
+      // Create pool in database (REMOVED collection_symbol)
       const poolConfig = await createPool({
         collection_id: collectionId,
         collection_name: collectionName,
-        collection_symbol: collectionSymbol,
+        collection_symbol: '', // Always empty now
         collection_image: collectionImage,
         collection_address: collectionAddress,
         pool_address: finalPoolAddress,
@@ -276,11 +276,11 @@ class PoolManager {
 // Export singleton instance
 export const poolManager = new PoolManager();
 
-// Export utility functions
+// Export utility functions (REMOVED collection symbol parameter)
 export const createNewPool = async (
   collectionId: string,
   collectionName: string,
-  collectionSymbol: string,
+  collectionSymbol: string, // Keep for compatibility but ignore
   collectionImage: string,
   collectionAddress: string,
   creatorWallet: string,
@@ -292,7 +292,7 @@ export const createNewPool = async (
   return await poolManager.createPool(
     collectionId,
     collectionName,
-    collectionSymbol,
+    '', // Always pass empty string for collection symbol
     collectionImage,
     collectionAddress,
     creatorWallet,

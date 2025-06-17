@@ -23,7 +23,8 @@ import {
   Trash,
   Type,
   Image,
-  Zap
+  Zap,
+  Copy
 } from 'lucide-react';
 import { CreatePoolModal } from './CreatePoolModal';
 import { EditPoolModal } from './EditPoolModal';
@@ -254,6 +255,18 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
+  };
+
   if (!isAdmin) {
     return (
       <div className="text-center py-16">
@@ -470,9 +483,28 @@ export const AdminDashboard: React.FC = () => {
                       <div>
                         <h4 className="text-lg font-semibold text-white">{pool.collection_name}</h4>
                         <p className="text-gray-400">{pool.collection_id}</p>
-                        <p className="text-sm text-gray-500">
-                          Pool: {pool.pool_address.slice(0, 8)}...{pool.pool_address.slice(-8)}
-                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-sm text-gray-500">Pool:</span>
+                          <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.pool_address)}</span>
+                          <button
+                            onClick={() => copyToClipboard(pool.pool_address)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy pool address"
+                          >
+                            <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-sm text-gray-500">Collection:</span>
+                          <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.collection_address)}</span>
+                          <button
+                            onClick={() => copyToClipboard(pool.collection_address)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy collection address"
+                          >
+                            <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
@@ -789,7 +821,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-gray-400 mb-2">Program ID</p>
-                <p className="text-white font-mono text-sm bg-white/5 p-3 rounded-lg">
+                <p className="text-white font-mono text-sm bg-white/5  p-3 rounded-lg">
                   {getCurrentProgramId()}
                 </p>
               </div>
