@@ -217,16 +217,21 @@ export const AdminDashboard: React.FC = () => {
       // FIXED: Show success feedback without interfering with saving state
       const saveButton = document.querySelector('[data-save-button]') as HTMLButtonElement;
       if (saveButton) {
-        const originalText = saveButton.textContent;
-        const originalBackground = saveButton.style.background;
+        // Find the icon and text elements
+        const iconElement = saveButton.querySelector('svg');
+        const textElement = saveButton.querySelector('span');
         
-        // Temporarily show success state
-        saveButton.textContent = 'Saved!';
+        // Temporarily show success state while preserving icon
+        if (textElement) {
+          textElement.textContent = 'Saved!';
+        }
         saveButton.style.background = 'linear-gradient(to right, #10b981, #059669)';
         saveButton.disabled = true; // Prevent clicking during success display
         
         setTimeout(() => {
-          saveButton.textContent = 'Save Settings';
+          if (textElement) {
+            textElement.textContent = 'Save Settings';
+          }
           saveButton.style.background = '';
           saveButton.disabled = false;
         }, 2000);
