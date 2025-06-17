@@ -325,15 +325,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 </p>
               </div>
             </div>
-
-            {/* Warning/Info */}
-            <div className={`border rounded-lg p-4 mb-6 ${
-              hasPoolAccess 
-                ? 'bg-green-500/10 border-green-500/20'
-                : 'bg-red-500/10 border-red-500/20'
-            }`}>
-            </div>
-
             <button
               onClick={handleConfirmSwap}
               disabled={!wallet.connected || !hasPoolAccess}
