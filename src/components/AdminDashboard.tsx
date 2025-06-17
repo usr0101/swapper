@@ -214,20 +214,21 @@ export const AdminDashboard: React.FC = () => {
 
       console.log('✅ Settings saved successfully and applied to platform');
       
-      // FIXED: Reset saving state first, then show success feedback
-      setSaving(false);
-      
+      // FIXED: Show success feedback without interfering with saving state
       const saveButton = document.querySelector('[data-save-button]') as HTMLButtonElement;
       if (saveButton) {
         const originalText = saveButton.textContent;
         const originalBackground = saveButton.style.background;
         
+        // Temporarily show success state
         saveButton.textContent = 'Saved!';
         saveButton.style.background = 'linear-gradient(to right, #10b981, #059669)';
+        saveButton.disabled = true; // Prevent clicking during success display
         
         setTimeout(() => {
-          saveButton.textContent = originalText || 'Save Settings';
-          saveButton.style.background = originalBackground;
+          saveButton.textContent = 'Save Settings';
+          saveButton.style.background = '';
+          saveButton.disabled = false;
         }, 2000);
       }
 
@@ -265,8 +266,10 @@ export const AdminDashboard: React.FC = () => {
       alert(errorMessage);
       console.error('Full error details:', error);
     } finally {
-      // Always reset saving state in finally block
-      setSaving(false);
+      // CRITICAL FIX: Reset saving state immediately after operations complete
+      setTimeout(() => {
+        setSaving(false);
+      }, 100); // Small delay to ensure UI updates properly
     }
   };
 
