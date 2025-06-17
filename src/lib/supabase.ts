@@ -357,6 +357,9 @@ export const saveAdminSettings = async (settings: Omit<AdminSettings, 'id' | 'cr
       maintenance_message: settings.maintenance_message,
       helius_api_key: settings.helius_api_key,
       network: settings.network,
+      platform_name: settings.platform_name,
+      platform_description: settings.platform_description,
+      platform_icon: settings.platform_icon,
     }], {
       onConflict: 'user_wallet'
     })
