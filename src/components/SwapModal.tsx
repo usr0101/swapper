@@ -348,12 +348,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                   <p className={`font-medium mb-1 ${hasPoolAccess ? 'text-green-200' : 'text-red-200'}`}>
                     {hasPoolAccess ? 'Ready to Swap' : 'Swap Unavailable'}
                   </p>
-                  <p className={`${hasPoolAccess ? 'text-green-100/80' : 'text-red-100/80'}`}>
-                    {hasPoolAccess 
-                      ? 'Both NFTs will be verified and exchanged simultaneously. This action cannot be undone.'
-                      : 'This pool cannot execute swaps because it lacks the necessary wallet access. Both NFTs must be exchanged simultaneously, or the transaction will not proceed.'
-                    }
-                  </p>
                 </div>
               </div>
             </div>
