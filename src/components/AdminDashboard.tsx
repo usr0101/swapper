@@ -214,14 +214,13 @@ export const AdminDashboard: React.FC = () => {
 
       console.log('✅ Settings saved successfully and applied to platform');
       
-      // FIXED: Show success feedback without interfering with saving state
+      // FIXED: Reset saving state first, then show success feedback
+      setSaving(false);
+      
       const saveButton = document.querySelector('[data-save-button]') as HTMLButtonElement;
       if (saveButton) {
         const originalText = saveButton.textContent;
         const originalBackground = saveButton.style.background;
-        
-        // Temporarily disable the saving state to show success
-        setSaving(false);
         
         saveButton.textContent = 'Saved!';
         saveButton.style.background = 'linear-gradient(to right, #10b981, #059669)';
@@ -229,11 +228,7 @@ export const AdminDashboard: React.FC = () => {
         setTimeout(() => {
           saveButton.textContent = originalText || 'Save Settings';
           saveButton.style.background = originalBackground;
-          // Don't reset saving state here since we already set it to false above
         }, 2000);
-      } else {
-        // If button not found, just reset saving state
-        setSaving(false);
       }
 
       // Verify the save by reloading from database
@@ -269,8 +264,8 @@ export const AdminDashboard: React.FC = () => {
       
       alert(errorMessage);
       console.error('Full error details:', error);
-      
-      // Reset saving state on error
+    } finally {
+      // Always reset saving state in finally block
       setSaving(false);
     }
   };
