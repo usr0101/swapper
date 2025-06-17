@@ -145,17 +145,6 @@ export const AdminDashboard: React.FC = () => {
           platformIcon: settings.platform_icon || platformIcon,
         });
 
-        // CRITICAL FIX: Apply platform branding to context if different
-        if (settings.platform_name !== platformName || 
-            settings.platform_description !== platformDescription || 
-            settings.platform_icon !== platformIcon) {
-          console.log('🎨 Applying loaded platform branding to context...');
-          updatePlatformBranding(
-            settings.platform_name || platformName,
-            settings.platform_description || platformDescription,
-            settings.platform_icon || platformIcon
-          );
-        }
       } else {
         console.log('⚠️ No admin settings found, using defaults');
       }

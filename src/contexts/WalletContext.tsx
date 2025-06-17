@@ -61,7 +61,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [platformName, setPlatformName] = useState('Swapper');
   const [platformDescription, setPlatformDescription] = useState('Real NFT Exchange');
   const [platformIcon, setPlatformIcon] = useState('⚡');
-  const [globalBrandingLoaded, setGlobalBrandingLoaded] = useState(false);
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
@@ -72,17 +71,15 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     cleanupLocalStorage();
   }, []);
 
-  // CRITICAL FIX: Load global platform branding on app start (regardless of wallet connection)
+  // CRITICAL FIX: Load platform branding from database on app start (always from database)
   useEffect(() => {
     const loadGlobalBranding = async () => {
-      if (globalBrandingLoaded) return;
-      
       try {
-        console.log('🌍 Loading global platform branding...');
+        console.log('🌍 Loading platform branding from database...');
         const branding = await getGlobalPlatformBranding();
         
         if (branding) {
-          console.log('✅ Global platform branding loaded:', branding);
+          console.log('✅ Platform branding loaded from database:', branding);
           setPlatformName(branding.platform_name);
           setPlatformDescription(branding.platform_description);
           setPlatformIcon(branding.platform_icon);
@@ -98,17 +95,16 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setNetwork(branding.network);
           }
         } else {
-          console.log('⚠️ No global platform branding found, using defaults');
+          console.log('⚠️ No platform branding found in database, using defaults');
         }
       } catch (error) {
-        console.error('❌ Error loading global platform branding:', error);
-      } finally {
-        setGlobalBrandingLoaded(true);
+        console.error('❌ Error loading platform branding from database:', error);
       }
     };
 
     loadGlobalBranding();
-  }, [globalBrandingLoaded]);
+  }, []); // Only run once on app start
+
   // Auto-reconnect wallet on page reload
   useEffect(() => {
     const handleAutoConnect = async () => {
@@ -129,24 +125,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // CRITICAL FIX: Load settings immediately when wallet connects
   useEffect(() => {
     if (connected && publicKey) {
-      console.log('🔄 Wallet connected, loading settings immediately...');
+      console.log('🔄 Wallet connected, loading user-specific settings...');
       loadSettingsFromSupabase();
     }
   }, [connected, publicKey]);
 
-  // CRITICAL FIX: Also try to load settings for admin users even if not migrated yet
-  useEffect(() => {
-    if (connected && publicKey && isAdmin && !settingsLoaded) {
-      console.log('🔄 Admin detected, ensuring settings are loaded...');
-      loadSettingsFromSupabase();
-    }
-  }, [isAdmin, connected, publicKey, settingsLoaded]);
 
   const loadSettingsFromSupabase = async () => {
     if (!publicKey) return;
 
     try {
-      console.log('🔄 Loading settings from Supabase for wallet:', publicKey.toString());
+      console.log('🔄 Loading user-specific settings from Supabase for wallet:', publicKey.toString());
       console.log('🔄 Is admin:', isAdmin);
 
       // ENHANCED: Always clean localStorage first
@@ -164,34 +153,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       }
 
-      // CRITICAL FIX: Load admin settings and apply platform branding immediately
-      console.log('📋 Loading admin settings from Supabase...');
+      // Load admin settings (but don't override global branding unless this user has different settings)
+      console.log('📋 Loading user admin settings from Supabase...');
       const settings = await getAdminSettings(publicKey.toString());
       
       if (settings) {
-        console.log('✅ Admin settings found in Supabase:', {
-          platform_name: settings.platform_name,
-          platform_description: settings.platform_description,
-          platform_icon: settings.platform_icon,
-          platform_active: settings.platform_active,
-          network: settings.network,
-        });
-
-        // CRITICAL FIX: Apply platform branding IMMEDIATELY and SYNCHRONOUSLY
-        if (settings.platform_name && settings.platform_name !== platformName) {
-          console.log('🎨 Applying platform name from Supabase:', settings.platform_name);
-          setPlatformName(settings.platform_name);
-        }
-        
-        if (settings.platform_description && settings.platform_description !== platformDescription) {
-          console.log('🎨 Applying platform description from Supabase:', settings.platform_description);
-          setPlatformDescription(settings.platform_description);
-        }
-        
-        if (settings.platform_icon && settings.platform_icon !== platformIcon) {
-          console.log('🎨 Applying platform icon from Supabase:', settings.platform_icon);
-          setPlatformIcon(settings.platform_icon);
-        }
+        console.log('✅ User admin settings found in Supabase');
 
         // Apply other settings
         setAdminSettings(settings);
@@ -199,14 +166,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setMaintenanceMessage(settings.maintenance_message);
         setNetwork(settings.network);
         
-        console.log('✅ Admin settings loaded and applied from Supabase');
-        console.log('🎨 Current platform branding:', {
-          name: settings.platform_name || platformName,
-          description: settings.platform_description || platformDescription,
-          icon: settings.platform_icon || platformIcon,
-        });
+        console.log('✅ User admin settings loaded from Supabase');
       } else {
-        console.log('⚠️ No admin settings found in Supabase');
+        console.log('⚠️ No user admin settings found in Supabase');
       }
 
       // Load API config
@@ -261,10 +223,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setMigrationCompleted(false);
       setSettingsLoaded(false);
       
-      // Reset platform branding to defaults
-      setPlatformName('Swapper');
-      setPlatformDescription('Real NFT Exchange');
-      setPlatformIcon('⚡');
+      // DON'T reset platform branding - it should stay from database
       
       // Clean up on disconnect
       cleanupLocalStorage();
@@ -318,14 +277,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setPlatformName(name);
     setPlatformDescription(description);
     setPlatformIcon(icon);
-    
-    // CRITICAL FIX: Also update the adminSettings state so it persists
-    setAdminSettings((prev: any) => prev ? {
-      ...prev,
-      platform_name: name,
-      platform_description: description,
-      platform_icon: icon,
-    } : null);
     
     console.log('✅ Platform branding updated in context');
   };
