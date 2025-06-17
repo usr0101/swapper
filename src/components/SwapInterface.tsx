@@ -680,7 +680,7 @@ export const SwapInterface: React.FC = () => {
                     : hasSwapCapability === false
                     ? 'Swap Not Available'
                     : canSwap
-                    ? 'Execute Atomic Swap'
+                    ? 'Execute Swap'
                     : 'Select both NFTs to continue'
                   }
                 </button>
