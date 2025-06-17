@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, AlertTriangle, CheckCircle, Loader2, Key, Plus, Copy, Eye, EyeOff } from 'lucide-react';
+import { X, Upload, AlertTriangle, CheckCircle, Loader2, Key, Plus, Copy, Eye, EyeOff, FileText } from 'lucide-react';
 import { poolManager } from '../lib/pool-manager';
 import { Keypair } from '@solana/web3.js';
 
@@ -15,13 +15,14 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     collectionName: '',
     collectionImage: '',
     collectionAddress: '',
-    swapFee: defaultSwapFee, // Use the admin-configured default
+    swapFee: defaultSwapFee,
     description: '',
   });
   
   // Pool address options
-  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'existing'>('create');
+  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'existing' | 'import'>('create');
   const [existingPoolAddress, setExistingPoolAddress] = useState('');
+  const [importPrivateKey, setImportPrivateKey] = useState('');
   const [generatedWallet, setGeneratedWallet] = useState<{
     publicKey: string;
     secretKey: string;
@@ -64,6 +65,23 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         newErrors.poolAddress = 'Pool address is required';
       } else if (existingPoolAddress.length < 32) {
         newErrors.poolAddress = 'Invalid Solana address format';
+      }
+    } else if (poolAddressOption === 'import') {
+      if (!importPrivateKey.trim()) {
+        newErrors.poolAddress = 'Private key is required';
+      } else {
+        try {
+          // Validate private key format
+          const keyArray = importPrivateKey.includes(',') 
+            ? importPrivateKey.split(',').map(n => parseInt(n.trim()))
+            : Array.from(new Uint8Array(Buffer.from(importPrivateKey, 'base64')));
+          
+          if (keyArray.length !== 64 || keyArray.some(n => isNaN(n) || n < 0 || n > 255)) {
+            newErrors.poolAddress = 'Invalid private key format';
+          }
+        } catch {
+          newErrors.poolAddress = 'Invalid private key format';
+        }
       }
     } else if (poolAddressOption === 'create' && !generatedWallet) {
       newErrors.poolAddress = 'Please generate a wallet address first';
@@ -109,10 +127,49 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     }
   };
 
+  const importWalletFromPrivateKey = () => {
+    try {
+      let keyArray: number[];
+      
+      // Handle different private key formats
+      if (importPrivateKey.includes(',')) {
+        // Comma-separated format
+        keyArray = importPrivateKey.split(',').map(n => parseInt(n.trim()));
+      } else if (importPrivateKey.startsWith('[') && importPrivateKey.endsWith(']')) {
+        // JSON array format
+        keyArray = JSON.parse(importPrivateKey);
+      } else {
+        // Base64 format
+        keyArray = Array.from(new Uint8Array(Buffer.from(importPrivateKey, 'base64')));
+      }
+      
+      if (keyArray.length !== 64 || keyArray.some(n => isNaN(n) || n < 0 || n > 255)) {
+        throw new Error('Invalid key length or values');
+      }
+      
+      const keypair = Keypair.fromSecretKey(new Uint8Array(keyArray));
+      const wallet = {
+        publicKey: keypair.publicKey.toString(),
+        secretKey: keyArray.join(','),
+      };
+      
+      setGeneratedWallet(wallet);
+      
+      // Clear any existing errors
+      if (errors.poolAddress) {
+        setErrors(prev => ({ ...prev, poolAddress: '' }));
+      }
+      
+      console.log('Imported wallet from private key:', wallet.publicKey);
+    } catch (error) {
+      console.error('Error importing wallet:', error);
+      setErrors(prev => ({ ...prev, poolAddress: 'Invalid private key format. Supported formats: comma-separated numbers, JSON array, or base64' }));
+    }
+  };
+
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
       console.log(`${type} copied to clipboard`);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
@@ -161,20 +218,28 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
       return;
     }
 
-    // Check if pool already exists
-    const existingPool = poolManager.getPool(formData.collectionId);
-    if (existingPool) {
-      setErrors({ collectionId: 'A pool already exists for this collection ID' });
-      return;
-    }
-
     // Prepare pool data with the selected address option
-    const poolData = {
+    let poolData = {
       ...formData,
-      collectionSymbol: formData.collectionName.substring(0, 10).toUpperCase().replace(/\s+/g, ''), // Auto-generate from name
-      poolAddress: poolAddressOption === 'create' ? generatedWallet?.publicKey : existingPoolAddress,
-      poolWalletData: poolAddressOption === 'create' ? generatedWallet : null,
+      collectionSymbol: formData.collectionName.substring(0, 10).toUpperCase().replace(/\s+/g, ''),
+      poolAddress: '',
+      poolWalletData: null as any,
     };
+
+    if (poolAddressOption === 'create') {
+      poolData.poolAddress = generatedWallet?.publicKey || '';
+      poolData.poolWalletData = generatedWallet;
+    } else if (poolAddressOption === 'existing') {
+      poolData.poolAddress = existingPoolAddress;
+      poolData.poolWalletData = {
+        publicKey: existingPoolAddress,
+        secretKey: '',
+        hasPrivateKey: false,
+      };
+    } else if (poolAddressOption === 'import') {
+      poolData.poolAddress = generatedWallet?.publicKey || '';
+      poolData.poolWalletData = generatedWallet;
+    }
 
     onSubmit(poolData);
   };
@@ -195,7 +260,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div>
@@ -267,7 +332,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             </label>
             
             {/* Option Selection */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-4 mb-4">
               <button
                 type="button"
                 onClick={() => setPoolAddressOption('create')}
@@ -280,8 +345,8 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                 <div className="flex items-center space-x-3">
                   <Plus className="h-5 w-5 text-purple-400" />
                   <div className="text-left">
-                    <p className="text-white font-medium">Create New Wallet</p>
-                    <p className="text-gray-400 text-sm">Generate a new Solana address</p>
+                    <p className="text-white font-medium">Create New</p>
+                    <p className="text-gray-400 text-sm">Generate new wallet</p>
                   </div>
                 </div>
               </button>
@@ -298,8 +363,26 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                 <div className="flex items-center space-x-3">
                   <Key className="h-5 w-5 text-blue-400" />
                   <div className="text-left">
-                    <p className="text-white font-medium">Use Existing Address</p>
-                    <p className="text-gray-400 text-sm">Enter an existing wallet address</p>
+                    <p className="text-white font-medium">Use Existing</p>
+                    <p className="text-gray-400 text-sm">Enter address only</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPoolAddressOption('import')}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                  poolAddressOption === 'import'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-green-400" />
+                  <div className="text-left">
+                    <p className="text-white font-medium">Import Wallet</p>
+                    <p className="text-gray-400 text-sm">Use private key</p>
                   </div>
                 </div>
               </button>
@@ -416,9 +499,63 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                   }`}
                   placeholder="Enter existing Solana wallet address"
                 />
-                <p className="text-gray-500 text-xs mt-1">
-                  Make sure you have access to this wallet for pool management
-                </p>
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mt-3">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-yellow-200 font-medium">No Swap Capability</p>
+                      <p className="text-yellow-100/80 text-xs mt-1">
+                        Without the private key, this pool cannot execute swaps automatically. 
+                        Users will need to manually send NFTs to this address.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Import Wallet Option */}
+            {poolAddressOption === 'import' && (
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <label className="block text-sm text-gray-300 mb-2">
+                  Import Private Key
+                </label>
+                <textarea
+                  value={importPrivateKey}
+                  onChange={(e) => {
+                    setImportPrivateKey(e.target.value);
+                    if (errors.poolAddress) {
+                      setErrors(prev => ({ ...prev, poolAddress: '' }));
+                    }
+                  }}
+                  rows={3}
+                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                    errors.poolAddress ? 'border-red-500' : 'border-white/20'
+                  }`}
+                  placeholder="Paste private key (comma-separated numbers, JSON array, or base64)"
+                />
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-gray-500 text-xs">
+                    Supported formats: [1,2,3...], 1,2,3... or base64
+                  </p>
+                  <button
+                    type="button"
+                    onClick={importWalletFromPrivateKey}
+                    disabled={!importPrivateKey.trim()}
+                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200"
+                  >
+                    Import
+                  </button>
+                </div>
+                
+                {generatedWallet && (
+                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
+                    <p className="text-green-100/80 text-xs mt-1">
+                      Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             

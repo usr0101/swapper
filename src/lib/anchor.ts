@@ -3,8 +3,40 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 import { NftSwap } from '../types/nft_swap';
 
-// Program ID (updated with your deployed program ID)
-export const PROGRAM_ID = new PublicKey('B4eBSHpFutVS5L2YtcwqvLKuEsENVQn5TH2uL6wwnt37');
+// Program ID (can be updated via admin deployment)
+export let PROGRAM_ID = new PublicKey('B4eBSHpFutVS5L2YtcwqvLKuEsENVQn5TH2uL6wwnt37');
+
+// Function to update program ID (called from admin deployment)
+export const updateProgramId = (newProgramId: string) => {
+  try {
+    PROGRAM_ID = new PublicKey(newProgramId);
+    console.log('✅ Program ID updated to:', newProgramId);
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('swapper_program_id', newProgramId);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to update program ID:', error);
+    return false;
+  }
+};
+
+// Load program ID from localStorage on startup
+const loadStoredProgramId = () => {
+  try {
+    const storedId = localStorage.getItem('swapper_program_id');
+    if (storedId) {
+      PROGRAM_ID = new PublicKey(storedId);
+      console.log('📋 Loaded stored program ID:', storedId);
+    }
+  } catch (error) {
+    console.error('Error loading stored program ID:', error);
+  }
+};
+
+// Initialize on module load
+loadStoredProgramId();
 
 // Connection to Solana cluster
 export const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -38,6 +70,9 @@ export const getAssociatedTokenAccount = async (
   const { getAssociatedTokenAddress } = await import('@solana/spl-token');
   return await getAssociatedTokenAddress(mint, owner);
 };
+
+// Get current program ID
+export const getCurrentProgramId = () => PROGRAM_ID.toString();
 
 // Updated IDL for the deployed program
 const IDL = {

@@ -105,6 +105,18 @@ export const getPool = async (collectionId: string): Promise<PoolConfig | null> 
   return data;
 };
 
+export const updatePool = async (collectionId: string, updates: Partial<PoolConfig>) => {
+  const { data, error } = await supabase
+    .from('pools')
+    .update(updates)
+    .eq('collection_id', collectionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const updatePoolStats = async (collectionId: string, nftCount: number, volume: number = 0) => {
   const updateData: { nft_count: number; } = { nft_count: nftCount };
 
@@ -122,7 +134,6 @@ export const updatePoolStats = async (collectionId: string, nftCount: number, vo
     const { error: rpcError } = await supabase.rpc('increment_volume', { pool_id: collectionId, amount: volume });
     if (rpcError) {
       console.error('Error calling increment_volume RPC:', rpcError);
-      // Depending on desired behavior, you might want to throw rpcError here
     }
   }
   
@@ -146,10 +157,13 @@ export const togglePoolStatus = async (collectionId: string) => {
 
 export const deletePool = async (collectionId: string) => {
   // First delete associated wallet data
-  await supabase
-    .from('pool_wallets')
-    .delete()
-    .eq('pool_address', (await getPool(collectionId))?.pool_address);
+  const pool = await getPool(collectionId);
+  if (pool) {
+    await supabase
+      .from('pool_wallets')
+      .delete()
+      .eq('pool_address', pool.pool_address);
+  }
 
   const { error } = await supabase
     .from('pools')
@@ -269,10 +283,52 @@ export const saveApiConfig = async (config: Omit<ApiConfig, 'id' | 'created_at' 
   return data;
 };
 
+// Clean up any remaining localStorage data
+export const cleanupLocalStorage = () => {
+  console.log('🧹 Cleaning up any remaining localStorage data...');
+  
+  const keysToRemove = [
+    'swapper_pools',
+    'swapper_admin_settings',
+    'swapper_api_config',
+    'swapper_network'
+  ];
+  
+  // Remove specific keys
+  keysToRemove.forEach(key => {
+    if (localStorage.getItem(key)) {
+      localStorage.removeItem(key);
+      console.log(`Removed ${key} from localStorage`);
+    }
+  });
+  
+  // Remove any pool wallet keys
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('pool_wallet_')) {
+      localStorage.removeItem(key);
+      console.log(`Removed ${key} from localStorage`);
+    }
+  }
+  
+  console.log('✅ localStorage cleanup completed');
+};
+
 // Migration utilities
 export const migrateFromLocalStorage = async (userWallet: string) => {
   try {
     console.log('🔄 Starting migration from localStorage to Supabase...');
+
+    // Check if migration is needed
+    const hasLocalData = localStorage.getItem('swapper_pools') || 
+                        localStorage.getItem('swapper_admin_settings') || 
+                        localStorage.getItem('swapper_api_config');
+    
+    if (!hasLocalData) {
+      console.log('No localStorage data found, skipping migration');
+      cleanupLocalStorage(); // Clean up any remaining data
+      return false;
+    }
 
     // Migrate admin settings
     const adminSettings = localStorage.getItem('swapper_admin_settings');
@@ -287,7 +343,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
         helius_api_key: settings.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
         network: settings.network || 'devnet',
       });
-      localStorage.removeItem('swapper_admin_settings');
       console.log('✅ Admin settings migrated');
     }
 
@@ -301,7 +356,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
         helius_rpc: config.heliusRpc || 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
         network: config.network || 'devnet',
       });
-      localStorage.removeItem('swapper_api_config');
       console.log('✅ API config migrated');
     }
 
@@ -311,6 +365,14 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
       const poolsData = JSON.parse(pools);
       for (const [collectionId, pool] of Object.entries(poolsData)) {
         const poolConfig = pool as any;
+        
+        // Check if pool already exists
+        const existingPool = await getPool(collectionId);
+        if (existingPool) {
+          console.log(`Pool ${collectionId} already exists, skipping`);
+          continue;
+        }
+        
         await createPool({
           collection_id: collectionId,
           collection_name: poolConfig.collectionName,
@@ -331,7 +393,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
           await storePoolWallet(poolConfig.poolAddress, poolConfig.poolWalletData);
         }
       }
-      localStorage.removeItem('swapper_pools');
       console.log('✅ Pools migrated');
     }
 
@@ -348,13 +409,12 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
             secretKey: data.secretKey,
             hasPrivateKey: true,
           });
-          localStorage.removeItem(key);
         }
       }
     }
 
-    // Clean up network preference
-    localStorage.removeItem('swapper_network');
+    // Clean up localStorage after successful migration
+    cleanupLocalStorage();
 
     console.log('🎉 Migration completed successfully!');
     return true;
