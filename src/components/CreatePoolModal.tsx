@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, AlertTriangle, CheckCircle, Loader2, Key, Plus, Copy, Eye, EyeOff, FileText } from 'lucide-react';
-import { poolManager } from '../lib/pool-manager';
+import { createNewPool } from '../lib/pool-manager';
+import { useWallet } from '../contexts/WalletContext';
 import { Keypair } from '@solana/web3.js';
 
 interface CreatePoolModalProps {
@@ -10,6 +11,7 @@ interface CreatePoolModalProps {
 }
 
 export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSubmit, defaultSwapFee = '0.05' }) => {
+  const { address } = useWallet();
   const [formData, setFormData] = useState({
     collectionId: '',
     collectionName: '',
@@ -19,9 +21,8 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     description: '',
   });
   
-  // Pool address options
-  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'existing' | 'import'>('create');
-  const [existingPoolAddress, setExistingPoolAddress] = useState('');
+  // Pool address options - removed "existing" option
+  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'import'>('create');
   const [importPrivateKey, setImportPrivateKey] = useState('');
   const [generatedWallet, setGeneratedWallet] = useState<{
     publicKey: string;
@@ -31,6 +32,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   
   const [validating, setValidating] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -60,13 +62,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     }
 
     // Validate pool address based on option
-    if (poolAddressOption === 'existing') {
-      if (!existingPoolAddress.trim()) {
-        newErrors.poolAddress = 'Pool address is required';
-      } else if (existingPoolAddress.length < 32) {
-        newErrors.poolAddress = 'Invalid Solana address format';
-      }
-    } else if (poolAddressOption === 'import') {
+    if (poolAddressOption === 'import') {
       if (!importPrivateKey.trim()) {
         newErrors.poolAddress = 'Private key is required';
       } else {
@@ -186,23 +182,11 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     setValidationResult(null);
 
     try {
-      const isValid = await poolManager.validateCollection(formData.collectionAddress);
-      
-      if (isValid) {
-        setValidationResult({ valid: true, message: 'Collection address is valid' });
-        
-        // Try to fetch metadata
-        const metadata = await poolManager.getCollectionMetadata(formData.collectionAddress);
-        if (metadata) {
-          setFormData(prev => ({
-            ...prev,
-            collectionName: metadata.name || prev.collectionName,
-            collectionImage: metadata.image || prev.collectionImage,
-            description: metadata.description || prev.description,
-          }));
-        }
+      // Simple validation - check if it's a valid Solana address format
+      if (formData.collectionAddress.length >= 32 && formData.collectionAddress.length <= 44) {
+        setValidationResult({ valid: true, message: 'Collection address format is valid' });
       } else {
-        setValidationResult({ valid: false, message: 'Invalid collection address or not found on devnet' });
+        setValidationResult({ valid: false, message: 'Invalid collection address format' });
       }
     } catch (error) {
       setValidationResult({ valid: false, message: 'Error validating collection address' });
@@ -211,37 +195,59 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    // Prepare pool data with the selected address option
-    let poolData = {
-      ...formData,
-      collectionSymbol: formData.collectionName.substring(0, 10).toUpperCase().replace(/\s+/g, ''),
-      poolAddress: '',
-      poolWalletData: null as any,
-    };
-
-    if (poolAddressOption === 'create') {
-      poolData.poolAddress = generatedWallet?.publicKey || '';
-      poolData.poolWalletData = generatedWallet;
-    } else if (poolAddressOption === 'existing') {
-      poolData.poolAddress = existingPoolAddress;
-      poolData.poolWalletData = {
-        publicKey: existingPoolAddress,
-        secretKey: '',
-        hasPrivateKey: false,
-      };
-    } else if (poolAddressOption === 'import') {
-      poolData.poolAddress = generatedWallet?.publicKey || '';
-      poolData.poolWalletData = generatedWallet;
+    if (!address) {
+      setErrors({ general: 'Wallet not connected' });
+      return;
     }
 
-    onSubmit(poolData);
+    setCreating(true);
+
+    try {
+      // Prepare pool data with the selected address option
+      let poolData = {
+        ...formData,
+        collectionSymbol: formData.collectionName.substring(0, 10).toUpperCase().replace(/\s+/g, ''),
+        poolAddress: '',
+        poolWalletData: null as any,
+      };
+
+      if (poolAddressOption === 'create') {
+        poolData.poolAddress = generatedWallet?.publicKey || '';
+        poolData.poolWalletData = generatedWallet;
+      } else if (poolAddressOption === 'import') {
+        poolData.poolAddress = generatedWallet?.publicKey || '';
+        poolData.poolWalletData = generatedWallet;
+      }
+
+      // Create the pool using the pool manager
+      await createNewPool(
+        formData.collectionId,
+        formData.collectionName,
+        poolData.collectionSymbol,
+        formData.collectionImage,
+        formData.collectionAddress,
+        address,
+        parseFloat(formData.swapFee),
+        formData.description,
+        poolData.poolAddress,
+        poolData.poolWalletData
+      );
+
+      console.log('✅ Pool created successfully');
+      onSubmit(poolData);
+    } catch (error) {
+      console.error('❌ Error creating pool:', error);
+      setErrors({ general: error.message || 'Failed to create pool. Please try again.' });
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -282,6 +288,19 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* General Error */}
+          {errors.general && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                <div>
+                  <p className="text-red-200 font-medium">Error</p>
+                  <p className="text-red-100/80 text-sm mt-1">{errors.general}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Collection Address */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -325,14 +344,14 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             )}
           </div>
 
-          {/* Pool Address Options */}
+          {/* Pool Address Options - REMOVED "Use Existing" */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-3">
-              Pool Address Configuration *
+              Pool Wallet Configuration *
             </label>
             
             {/* Option Selection */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <button
                 type="button"
                 onClick={() => setPoolAddressOption('create')}
@@ -345,26 +364,8 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                 <div className="flex items-center space-x-3">
                   <Plus className="h-5 w-5 text-purple-400" />
                   <div className="text-left">
-                    <p className="text-white font-medium">Create New</p>
-                    <p className="text-gray-400 text-sm">Generate new wallet</p>
-                  </div>
-                </div>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setPoolAddressOption('existing')}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  poolAddressOption === 'existing'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/20 bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Key className="h-5 w-5 text-blue-400" />
-                  <div className="text-left">
-                    <p className="text-white font-medium">Use Existing</p>
-                    <p className="text-gray-400 text-sm">Enter address only</p>
+                    <p className="text-white font-medium">Create New Wallet</p>
+                    <p className="text-gray-400 text-sm">Generate a new Solana wallet</p>
                   </div>
                 </div>
               </button>
@@ -382,7 +383,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                   <FileText className="h-5 w-5 text-green-400" />
                   <div className="text-left">
                     <p className="text-white font-medium">Import Wallet</p>
-                    <p className="text-gray-400 text-sm">Use private key</p>
+                    <p className="text-gray-400 text-sm">Use existing private key</p>
                   </div>
                 </div>
               </button>
@@ -476,41 +477,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                     <p className="text-gray-400 text-sm">Click "Generate" to create a new wallet for this pool</p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Use Existing Address Option */}
-            {poolAddressOption === 'existing' && (
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <label className="block text-sm text-gray-300 mb-2">
-                  Existing Pool Address
-                </label>
-                <input
-                  type="text"
-                  value={existingPoolAddress}
-                  onChange={(e) => {
-                    setExistingPoolAddress(e.target.value);
-                    if (errors.poolAddress) {
-                      setErrors(prev => ({ ...prev, poolAddress: '' }));
-                    }
-                  }}
-                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.poolAddress ? 'border-red-500' : 'border-white/20'
-                  }`}
-                  placeholder="Enter existing Solana wallet address"
-                />
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mt-3">
-                  <div className="flex items-start space-x-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5" />
-                    <div className="text-sm">
-                      <p className="text-yellow-200 font-medium">No Swap Capability</p>
-                      <p className="text-yellow-100/80 text-xs mt-1">
-                        Without the private key, this pool cannot execute swaps automatically. 
-                        Users will need to manually send NFTs to this address.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -679,7 +645,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
               <div className="text-sm">
                 <p className="text-yellow-200 font-medium mb-1">Pool Creation</p>
                 <p className="text-yellow-100/80">
-                  Make sure the collection address is valid and exists on Solana devnet. 
+                  Make sure the collection address is valid and exists on Solana. 
                   The pool address will receive NFTs for swapping. Keep wallet credentials secure!
                 </p>
               </div>
@@ -697,9 +663,17 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             </button>
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105"
+              disabled={creating}
+              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 disabled:transform-none flex items-center justify-center space-x-2"
             >
-              Create Pool
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <span>Create Pool</span>
+              )}
             </button>
           </div>
         </form>

@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
-  const { isConnected, address, isAdmin, balance, network } = useWallet();
+  const { isConnected, address, isAdmin, balance, network, platformName, platformDescription, platformIcon } = useWallet();
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
@@ -25,13 +25,13 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
             >
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
-                <Zap className="h-6 w-6 text-white" />
+                <span className="text-xl">{platformIcon}</span>
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  Swapper
+                  {platformName}
                 </h1>
-                <p className="text-xs text-gray-400">Real NFT Exchange</p>
+                <p className="text-xs text-gray-400">{platformDescription}</p>
               </div>
             </button>
 

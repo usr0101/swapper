@@ -20,7 +20,10 @@ import {
   Database,
   Network,
   DollarSign,
-  Trash
+  Trash,
+  Type,
+  Image,
+  Zap
 } from 'lucide-react';
 import { CreatePoolModal } from './CreatePoolModal';
 import { EditPoolModal } from './EditPoolModal';
@@ -41,7 +44,7 @@ import {
 import { updateProgramId, getCurrentProgramId } from '../lib/anchor';
 
 export const AdminDashboard: React.FC = () => {
-  const { address, isAdmin, network, switchNetwork, forceCleanup: contextForceCleanup } = useWallet();
+  const { address, isAdmin, network, switchNetwork, forceCleanup: contextForceCleanup, platformName, platformDescription, platformIcon, updatePlatformBranding } = useWallet();
   const [activeTab, setActiveTab] = useState<'overview' | 'pools' | 'settings' | 'deploy'>('overview');
   const [showCreatePool, setShowCreatePool] = useState(false);
   const [showEditPool, setShowEditPool] = useState(false);
@@ -60,6 +63,9 @@ export const AdminDashboard: React.FC = () => {
     maintenanceMessage: 'Platform is currently under maintenance. Please check back later.',
     heliusApiKey: 'd260d547-850c-4cb6-8412-9c764f0c9df1',
     network: network,
+    platformName: platformName,
+    platformDescription: platformDescription,
+    platformIcon: platformIcon,
   });
 
   // API config state
@@ -113,6 +119,9 @@ export const AdminDashboard: React.FC = () => {
           maintenanceMessage: settings.maintenance_message,
           heliusApiKey: settings.helius_api_key,
           network: settings.network,
+          platformName: settings.platform_name || platformName,
+          platformDescription: settings.platform_description || platformDescription,
+          platformIcon: settings.platform_icon || platformIcon,
         });
       }
 
@@ -147,6 +156,9 @@ export const AdminDashboard: React.FC = () => {
         maintenance_message: adminSettings.maintenanceMessage,
         helius_api_key: adminSettings.heliusApiKey,
         network: adminSettings.network as 'devnet' | 'mainnet-beta',
+        platform_name: adminSettings.platformName,
+        platform_description: adminSettings.platformDescription,
+        platform_icon: adminSettings.platformIcon,
       });
 
       // Save API config
@@ -156,6 +168,9 @@ export const AdminDashboard: React.FC = () => {
         helius_rpc: apiConfig.heliusRpc,
         network: apiConfig.network as 'devnet' | 'mainnet-beta',
       });
+
+      // Update platform branding in context
+      updatePlatformBranding(adminSettings.platformName, adminSettings.platformDescription, adminSettings.platformIcon);
 
       // Update network if changed
       if (adminSettings.network !== network) {
@@ -275,15 +290,6 @@ export const AdminDashboard: React.FC = () => {
           <p className="text-gray-400 mt-1">Manage your NFT swap platform</p>
         </div>
         <div className="flex items-center space-x-4">
-          {/* ENHANCED: Force cleanup button */}
-          <button
-            onClick={handleForceCleanup}
-            disabled={cleaning}
-            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-          >
-            <Trash className="h-4 w-4" />
-            <span>{cleaning ? 'Cleaning...' : 'Force Cleanup'}</span>
-          </button>
           <button
             onClick={() => setShowProgramDeploy(true)}
             className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
@@ -329,20 +335,6 @@ export const AdminDashboard: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* ENHANCED: Cleanup notice */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div className="text-sm">
-                <p className="text-blue-200 font-medium mb-1">✅ Platform Migrated to Supabase</p>
-                <p className="text-blue-100/80">
-                  All data is now stored securely in Supabase. LocalStorage has been cleaned up. 
-                  Use "Force Cleanup" if you see any remaining test data.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-6">
@@ -553,6 +545,70 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
+            {/* Platform Branding */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                <Zap className="h-5 w-5 text-purple-400" />
+                <span>Platform Branding</span>
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Platform Name
+                  </label>
+                  <input
+                    type="text"
+                    value={adminSettings.platformName}
+                    onChange={(e) => setAdminSettings(prev => ({ ...prev, platformName: e.target.value }))}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Swapper"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Platform Description
+                  </label>
+                  <input
+                    type="text"
+                    value={adminSettings.platformDescription}
+                    onChange={(e) => setAdminSettings(prev => ({ ...prev, platformDescription: e.target.value }))}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Real NFT Exchange"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Platform Icon (Emoji)
+                  </label>
+                  <input
+                    type="text"
+                    value={adminSettings.platformIcon}
+                    onChange={(e) => setAdminSettings(prev => ({ ...prev, platformIcon: e.target.value }))}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., ⚡"
+                    maxLength={2}
+                  />
+                  <p className="text-gray-500 text-xs mt-1">Use an emoji or single character</p>
+                </div>
+
+                {/* Preview */}
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <p className="text-gray-400 text-sm mb-2">Preview:</p>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">{adminSettings.platformIcon}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white">{adminSettings.platformName}</h4>
+                      <p className="text-xs text-gray-400">{adminSettings.platformDescription}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* General Settings */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
               <h4 className="text-lg font-semibold text-white mb-4">General Settings</h4>
@@ -678,6 +734,35 @@ export const AdminDashboard: React.FC = () => {
                     <option value="devnet">Devnet</option>
                     <option value="mainnet-beta">Mainnet Beta</option>
                   </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Cleanup Section */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                <Trash className="h-5 w-5 text-red-400" />
+                <span>Data Management</span>
+              </h4>
+              <div className="space-y-4">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-red-200 font-medium mb-1">Force Cleanup</p>
+                      <p className="text-red-100/80 mb-3">
+                        Remove all test data and localStorage. This action cannot be undone.
+                      </p>
+                      <button
+                        onClick={handleForceCleanup}
+                        disabled={cleaning}
+                        className="bg-red-500 hover:bg-red-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                      >
+                        <Trash className="h-4 w-4" />
+                        <span>{cleaning ? 'Cleaning...' : 'Force Cleanup'}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

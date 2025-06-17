@@ -18,6 +18,9 @@ interface WalletContextType {
   platformActive: boolean;
   maintenanceMessage: string;
   network: 'devnet' | 'mainnet-beta';
+  platformName: string;
+  platformDescription: string;
+  platformIcon: string;
   connect: () => void;
   disconnect: () => void;
   setPlatformStatus: (active: boolean, message?: string) => void;
@@ -26,6 +29,7 @@ interface WalletContextType {
   getHeliusRpcUrl: () => string;
   getHeliusApiKey: () => string;
   forceCleanup: () => Promise<void>;
+  updatePlatformBranding: (name: string, description: string, icon: string) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -51,6 +55,11 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [adminSettings, setAdminSettings] = useState<any>(null);
   const [apiConfig, setApiConfig] = useState<any>(null);
   const [migrationCompleted, setMigrationCompleted] = useState(false);
+  
+  // Platform branding state
+  const [platformName, setPlatformName] = useState('Swapper');
+  const [platformDescription, setPlatformDescription] = useState('Real NFT Exchange');
+  const [platformIcon, setPlatformIcon] = useState('⚡');
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
@@ -59,6 +68,23 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     // Always clean localStorage on app start
     cleanupLocalStorage();
+  }, []);
+
+  // Auto-reconnect wallet on page reload
+  useEffect(() => {
+    const handleAutoConnect = async () => {
+      if (!connected && publicKey) {
+        try {
+          await solanaConnect();
+        } catch (error) {
+          console.log('Auto-connect failed:', error);
+        }
+      }
+    };
+
+    // Small delay to allow wallet adapter to initialize
+    const timer = setTimeout(handleAutoConnect, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Load settings from Supabase when wallet connects
@@ -94,6 +120,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setPlatformActiveState(settings.platform_active);
         setMaintenanceMessage(settings.maintenance_message);
         setNetwork(settings.network);
+        
+        // Load platform branding if available
+        if (settings.platform_name) setPlatformName(settings.platform_name);
+        if (settings.platform_description) setPlatformDescription(settings.platform_description);
+        if (settings.platform_icon) setPlatformIcon(settings.platform_icon);
+        
         console.log('✅ Admin settings loaded from Supabase');
       }
 
@@ -141,6 +173,11 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setApiConfig(null);
       setMigrationCompleted(false);
       
+      // Reset platform branding to defaults
+      setPlatformName('Swapper');
+      setPlatformDescription('Real NFT Exchange');
+      setPlatformIcon('⚡');
+      
       // Clean up on disconnect
       cleanupLocalStorage();
     } catch (error) {
@@ -185,6 +222,13 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  // Update platform branding
+  const updatePlatformBranding = (name: string, description: string, icon: string) => {
+    setPlatformName(name);
+    setPlatformDescription(description);
+    setPlatformIcon(icon);
+  };
+
   return (
     <WalletContext.Provider
       value={{
@@ -195,6 +239,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         platformActive,
         maintenanceMessage,
         network,
+        platformName,
+        platformDescription,
+        platformIcon,
         connect,
         disconnect,
         setPlatformStatus,
@@ -203,6 +250,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         getHeliusRpcUrl,
         getHeliusApiKey,
         forceCleanup: handleForceCleanup,
+        updatePlatformBranding,
       }}
     >
       {children}
