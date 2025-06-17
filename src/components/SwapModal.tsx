@@ -332,13 +332,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 ? 'bg-green-500/10 border-green-500/20'
                 : 'bg-red-500/10 border-red-500/20'
             }`}>
-              <div className="flex items-start space-x-3">
-                {hasPoolAccess ? (
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                )}
-              </div>
             </div>
 
             <button
