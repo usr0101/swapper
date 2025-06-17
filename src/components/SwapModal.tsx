@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowRightLeft, AlertTriangle, CheckCircle, Loader2, ExternalLink, Key } from 'lucide-react';
 import { executeSwapTransaction, validateTransaction } from '../lib/solana';
 import { useWallet } from '../contexts/WalletContext';
@@ -37,6 +37,25 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const networkFee = 0.0005; // Base network fee
   const accountCreationBuffer = 0.002; // Buffer for potential account creation
   const totalCost = swapFee + networkFee + accountCreationBuffer;
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    // Disable body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${window.scrollY}px`;
+
+    return () => {
+      // Re-enable body scroll
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    };
+  }, []);
 
   // CRITICAL FIX: Use Supabase directly for pool access check
   const checkPoolAccess = async () => {
@@ -216,7 +235,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   if (hasPoolAccess === null) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-6 relative">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl w-full max-w-lg p-6 relative">
           <div className="text-center">
             <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">Checking Pool Access</h2>
@@ -228,103 +247,230 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X className="h-6 w-6" />
-        </button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      {/* Mobile-optimized modal container */}
+      <div className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] sm:m-4 bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative">
+        {/* Fixed header */}
+        <div className="flex-shrink-0 p-4 sm:p-6 border-b border-white/10">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
+          >
+            <X className="h-6 w-6" />
+          </button>
 
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-4">
-            {getStatusIcon()}
+          <div className="text-center pr-8">
+            <div className="flex justify-center mb-4">
+              {getStatusIcon()}
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              NFT Swap
+            </h2>
+            <p className="text-gray-400 text-sm sm:text-base">{getStatusMessage()}</p>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            NFT Swap
-          </h2>
-          <p className="text-gray-400">{getStatusMessage()}</p>
         </div>
 
-        {swapStatus === 'pending' && (
-          <>
-            {/* Pool Access Status */}
-            {hasPoolAccess ? (
-              <div className="mb-4 p-3 rounded-lg border bg-green-500/10 border-green-500/20">
-                <div className="flex items-center space-x-2">
-                  <Key className="h-4 w-4 text-green-400" />
-                  <span className="text-green-200 text-sm font-medium">Swap Available</span>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {swapStatus === 'pending' && (
+            <div className="space-y-4 sm:space-y-6">
+              {/* Pool Access Status */}
+              {hasPoolAccess ? (
+                <div className="p-3 rounded-lg border bg-green-500/10 border-green-500/20">
+                  <div className="flex items-center space-x-2">
+                    <Key className="h-4 w-4 text-green-400" />
+                    <span className="text-green-200 text-sm font-medium">Swap Available</span>
+                  </div>
+                  <p className="text-xs mt-1 opacity-80 text-green-100">
+                    Both NFTs will be exchanged simultaneously in one transaction
+                  </p>
                 </div>
-                <p className="text-xs mt-1 opacity-80 text-green-100">
-                  Both NFTs will be exchanged simultaneously in one transaction
-                </p>
-              </div>
-            ) : (
-              <div className="mb-4 p-3 rounded-lg border bg-red-500/10 border-red-500/20">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-red-400" />
-                  <span className="text-red-200 text-sm font-medium">Swap Not Available</span>
+              ) : (
+                <div className="p-3 rounded-lg border bg-red-500/10 border-red-500/20">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-4 w-4 text-red-400" />
+                    <span className="text-red-200 text-sm font-medium">Swap Not Available</span>
+                  </div>
+                  <p className="text-xs mt-1 opacity-80 text-red-100">
+                    This pool does not have the necessary access to execute swaps. Contact the admin to enable this feature.
+                  </p>
                 </div>
-                <p className="text-xs mt-1 opacity-80 text-red-100">
-                  This pool does not have the necessary access to execute swaps. Contact the admin to enable this feature.
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Swap Preview */}
-            <div className="bg-white/5 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="text-center flex-1">
-                  <img
-                    src={userNFT.image}
-                    alt={userNFT.name}
-                    className="w-20 h-20 rounded-lg object-cover mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium text-white">{userNFT.name}</p>
-                  <p className="text-xs text-gray-400">Your NFT</p>
-                </div>
-                
-                <div className="px-4">
-                  <ArrowRightLeft className={`h-6 w-6 ${hasPoolAccess ? 'text-green-400' : 'text-red-400'}`} />
-                </div>
-                
-                <div className="text-center flex-1">
-                  <img
-                    src={poolNFT.image}
-                    alt={poolNFT.name}
-                    className="w-20 h-20 rounded-lg object-cover mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium text-white">{poolNFT.name}</p>
-                  <p className="text-xs text-gray-400">Pool NFT</p>
+              {/* Swap Preview */}
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-center flex-1">
+                    <img
+                      src={userNFT.image}
+                      alt={userNFT.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover mx-auto mb-2"
+                    />
+                    <p className="text-sm font-medium text-white truncate">{userNFT.name}</p>
+                    <p className="text-xs text-gray-400">Your NFT</p>
+                  </div>
+                  
+                  <div className="px-3 sm:px-4">
+                    <ArrowRightLeft className={`h-5 w-5 sm:h-6 sm:w-6 ${hasPoolAccess ? 'text-green-400' : 'text-red-400'}`} />
+                  </div>
+                  
+                  <div className="text-center flex-1">
+                    <img
+                      src={poolNFT.image}
+                      alt={poolNFT.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover mx-auto mb-2"
+                    />
+                    <p className="text-sm font-medium text-white truncate">{poolNFT.name}</p>
+                    <p className="text-xs text-gray-400">Pool NFT</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Transaction Details */}
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Swap Fee</span>
-                <span className="text-white font-medium">{swapFee} SOL</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Network Fee (est.)</span>
-                <span className="text-white font-medium">{networkFee} SOL</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Account Creation Buffer</span>
-                <span className="text-white font-medium">{accountCreationBuffer} SOL</span>
-              </div>
-              <div className="border-t border-white/10 pt-3">
+              {/* Transaction Details */}
+              <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-white font-medium">Total Cost (Max)</span>
-                  <span className="text-white font-bold">{totalCost.toFixed(4)} SOL</span>
+                  <span className="text-gray-400 text-sm">Swap Fee</span>
+                  <span className="text-white font-medium text-sm">{swapFee} SOL</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Includes swap fee + network fees + buffer for account creation
-                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Network Fee (est.)</span>
+                  <span className="text-white font-medium text-sm">{networkFee} SOL</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Account Creation Buffer</span>
+                  <span className="text-white font-medium text-sm">{accountCreationBuffer} SOL</span>
+                </div>
+                <div className="border-t border-white/10 pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-medium">Total Cost (Max)</span>
+                    <span className="text-white font-bold">{totalCost.toFixed(4)} SOL</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Includes swap fee + network fees + buffer for account creation
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning/Info */}
+              <div className={`border rounded-lg p-4 ${
+                hasPoolAccess 
+                  ? 'bg-green-500/10 border-green-500/20'
+                  : 'bg-red-500/10 border-red-500/20'
+              }`}>
+                <div className="flex items-start space-x-3">
+                  {hasPoolAccess ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  )}
+                  <div className="text-sm">
+                    <p className={`font-medium mb-1 ${hasPoolAccess ? 'text-green-200' : 'text-red-200'}`}>
+                      {hasPoolAccess ? 'Ready to Swap' : 'Swap Unavailable'}
+                    </p>
+                    <p className={`text-xs ${hasPoolAccess ? 'text-green-100/80' : 'text-red-100/80'}`}>
+                      {hasPoolAccess 
+                        ? 'Both NFTs will be verified and exchanged simultaneously. This action cannot be undone.'
+                        : 'This pool cannot execute swaps because it lacks the necessary wallet access. Both NFTs must be exchanged simultaneously, or the transaction will not proceed.'
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
+
+          {(swapStatus === 'validating' || swapStatus === 'processing') && (
+            <div className="text-center py-8">
+              <div className="mb-4">
+                <div className="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-blue-200 text-sm">
+                    {swapStatus === 'validating' 
+                      ? 'Validating swap requirements...' 
+                      : 'Broadcasting transaction...'
+                    }
+                  </span>
+                </div>
+              </div>
+              <p className="text-gray-400 text-sm">
+                {swapStatus === 'validating' 
+                  ? 'Verifying both NFTs are from the same collection, checking ownership, and validating wallet balance...'
+                  : 'Please confirm the transaction in your wallet. Both NFTs will be exchanged simultaneously...'
+                }
+              </p>
+              {validationResult && (
+                <div className="mt-4 text-sm text-gray-300 space-y-1">
+                  <p>Balance: {validationResult.balance.toFixed(4)} SOL</p>
+                  <p>Required: {validationResult.required.toFixed(4)} SOL</p>
+                  <p>Swap Fee: {validationResult.swapFee.toFixed(4)} SOL</p>
+                  <p>Buffer: {validationResult.buffer.toFixed(4)} SOL</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {swapStatus === 'success' && txData && (
+            <div className="text-center py-8">
+              <div className="mb-6">
+                <div className="inline-flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 mb-4">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-green-200 text-sm">Swap confirmed</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">
+                  Your NFT swap has been executed successfully! Both NFTs have been exchanged simultaneously.
+                </p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-blue-200 text-sm">
+                    <strong>Transaction ID:</strong> {txData.signature.slice(0, 8)}...{txData.signature.slice(-8)}
+                  </p>
+                  <p className="text-blue-100/80 text-xs mt-1">
+                    <strong>Type:</strong> {txData.type} | <strong>Instructions:</strong> {txData.instructions}
+                  </p>
+                  <p className="text-blue-100/80 text-xs mt-1">{txData.note}</p>
+                </div>
+                {txData.signature && (
+                  <a
+                    href={txData.explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 text-purple-400 hover:text-purple-300 text-sm underline"
+                  >
+                    <span>View on Solana Explorer</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {swapStatus === 'error' && (
+            <div className="text-center py-8">
+              <div className="mb-6">
+                <div className="inline-flex items-center space-x-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-red-200 text-sm">Swap failed</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">
+                  {error}
+                </p>
+                {validationResult && !validationResult.valid && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
+                    <p className="text-yellow-200 text-sm">
+                      Balance: {validationResult.balance.toFixed(4)} SOL | Required: {validationResult.required.toFixed(4)} SOL
+                    </p>
+                    <p className="text-yellow-100/80 text-xs mt-1">
+                      Get free devnet SOL from the Solana faucet
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Fixed footer with action buttons */}
+        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-white/10">
+          {swapStatus === 'pending' && (
             <button
               onClick={handleConfirmSwap}
               disabled={!wallet.connected || !hasPoolAccess}
@@ -341,102 +487,18 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 : 'Execute Swap'
               }
             </button>
-          </>
-        )}
+          )}
 
-        {(swapStatus === 'validating' || swapStatus === 'processing') && (
-          <div className="text-center py-8">
-            <div className="mb-4">
-              <div className="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-blue-200">
-                  {swapStatus === 'validating' 
-                    ? 'Validating swap requirements...' 
-                    : 'Broadcasting transaction...'
-                  }
-                </span>
-              </div>
-            </div>
-            <p className="text-gray-400 text-sm">
-              {swapStatus === 'validating' 
-                ? 'Verifying both NFTs are from the same collection, checking ownership, and validating wallet balance...'
-                : 'Please confirm the transaction in your wallet. Both NFTs will be exchanged simultaneously...'
-              }
-            </p>
-            {validationResult && (
-              <div className="mt-4 text-sm text-gray-300">
-                <p>Balance: {validationResult.balance.toFixed(4)} SOL</p>
-                <p>Required: {validationResult.required.toFixed(4)} SOL</p>
-                <p>Swap Fee: {validationResult.swapFee.toFixed(4)} SOL</p>
-                <p>Buffer: {validationResult.buffer.toFixed(4)} SOL</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {swapStatus === 'success' && txData && (
-          <div className="text-center py-8">
-            <div className="mb-6">
-              <div className="inline-flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 mb-4">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-green-200">Swap confirmed</span>
-              </div>
-              <p className="text-gray-400 text-sm mb-4">
-                Your NFT swap has been executed successfully! Both NFTs have been exchanged simultaneously.
-              </p>
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
-                <p className="text-blue-200 text-sm">
-                  <strong>Transaction ID:</strong> {txData.signature.slice(0, 8)}...{txData.signature.slice(-8)}
-                </p>
-                <p className="text-blue-100/80 text-xs mt-1">
-                  <strong>Type:</strong> {txData.type} | <strong>Instructions:</strong> {txData.instructions}
-                </p>
-                <p className="text-blue-100/80 text-xs mt-1">{txData.note}</p>
-              </div>
-              {txData.signature && (
-                <a
-                  href={txData.explorerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 text-purple-400 hover:text-purple-300 text-sm underline"
-                >
-                  <span>View on Solana Explorer</span>
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              )}
-            </div>
-            
+          {swapStatus === 'success' && (
             <button
               onClick={onConfirm}
               className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 rounded-xl font-bold transition-all duration-200"
             >
               Continue
             </button>
-          </div>
-        )}
+          )}
 
-        {swapStatus === 'error' && (
-          <div className="text-center py-8">
-            <div className="mb-6">
-              <div className="inline-flex items-center space-x-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-red-200">Swap failed</span>
-              </div>
-              <p className="text-gray-400 text-sm mb-4">
-                {error}
-              </p>
-              {validationResult && !validationResult.valid && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
-                  <p className="text-yellow-200 text-sm">
-                    Balance: {validationResult.balance.toFixed(4)} SOL | Required: {validationResult.required.toFixed(4)} SOL
-                  </p>
-                  <p className="text-yellow-100/80 text-xs mt-1">
-                    Get free devnet SOL from the Solana faucet
-                  </p>
-                </div>
-              )}
-            </div>
-            
+          {swapStatus === 'error' && (
             <div className="flex space-x-3">
               <button
                 onClick={() => setSwapStatus('pending')}
@@ -451,8 +513,8 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 Close
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
