@@ -21,10 +21,10 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     description: '',
   });
   
-  // Pool address options
-  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'import' | 'manual'>('create');
+  // Pool address options - back to 2 options
+  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'import'>('create');
   const [importPrivateKey, setImportPrivateKey] = useState('');
-  const [manualPublicKey, setManualPublicKey] = useState('');
+  const [importPublicKey, setImportPublicKey] = useState('');
   const [generatedWallet, setGeneratedWallet] = useState<{
     publicKey: string;
     secretKey: string;
@@ -80,14 +80,13 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
           newErrors.poolAddress = 'Invalid private key format';
         }
       }
-    } else if (poolAddressOption === 'manual') {
-      if (!manualPublicKey.trim()) {
-        newErrors.poolAddress = 'Public key is required';
-      } else {
+
+      // Validate public key if provided
+      if (importPublicKey.trim()) {
         try {
-          new PublicKey(manualPublicKey.trim());
+          new PublicKey(importPublicKey.trim());
         } catch {
-          newErrors.poolAddress = 'Invalid public key format';
+          newErrors.publicKey = 'Invalid public key format';
         }
       }
     } else if (poolAddressOption === 'create' && !generatedWallet) {
@@ -156,43 +155,37 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
       
       // FIXED: Create keypair from the imported secret key to get the correct public key
       const keypair = Keypair.fromSecretKey(new Uint8Array(keyArray));
+      const derivedPublicKey = keypair.publicKey.toString();
+      
+      // Check if user provided a public key and if it matches
+      if (importPublicKey.trim()) {
+        if (importPublicKey.trim() !== derivedPublicKey) {
+          throw new Error('Public key does not match the private key. The correct public key for this private key is: ' + derivedPublicKey);
+        }
+      }
+      
       const wallet = {
-        publicKey: keypair.publicKey.toString(), // This will be the CORRECT public key derived from the private key
+        publicKey: derivedPublicKey, // Always use the derived public key
         secretKey: keyArray.join(','),
       };
       
       setGeneratedWallet(wallet);
       
-      // Clear any existing errors
-      if (errors.poolAddress) {
-        setErrors(prev => ({ ...prev, poolAddress: '' }));
+      // Auto-fill the public key field if it was empty
+      if (!importPublicKey.trim()) {
+        setImportPublicKey(derivedPublicKey);
       }
       
-      console.log('✅ Imported wallet from private key:', wallet.publicKey);
+      // Clear any existing errors
+      if (errors.poolAddress || errors.publicKey) {
+        setErrors(prev => ({ ...prev, poolAddress: '', publicKey: '' }));
+      }
+      
+      console.log('✅ Imported wallet from private key:', derivedPublicKey);
       console.log('🔑 Private key corresponds to this public key');
     } catch (error) {
       console.error('Error importing wallet:', error);
-      setErrors(prev => ({ ...prev, poolAddress: 'Invalid private key format. Supported formats: comma-separated numbers, JSON array, or base64' }));
-    }
-  };
-
-  const validateManualPublicKey = () => {
-    try {
-      const publicKey = new PublicKey(manualPublicKey.trim());
-      setGeneratedWallet({
-        publicKey: publicKey.toString(),
-        secretKey: '', // No private key for manual entry
-      });
-      
-      // Clear any existing errors
-      if (errors.poolAddress) {
-        setErrors(prev => ({ ...prev, poolAddress: '' }));
-      }
-      
-      console.log('✅ Manual public key validated:', publicKey.toString());
-    } catch (error) {
-      console.error('Error validating public key:', error);
-      setErrors(prev => ({ ...prev, poolAddress: 'Invalid public key format' }));
+      setErrors(prev => ({ ...prev, poolAddress: error.message || 'Invalid private key format. Supported formats: comma-separated numbers, JSON array, or base64' }));
     }
   };
 
@@ -257,13 +250,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         // FIXED: Use the correct public key from the imported wallet
         poolData.poolAddress = generatedWallet?.publicKey || '';
         poolData.poolWalletData = generatedWallet;
-      } else if (poolAddressOption === 'manual') {
-        poolData.poolAddress = generatedWallet?.publicKey || '';
-        poolData.poolWalletData = {
-          publicKey: generatedWallet?.publicKey || '',
-          secretKey: '', // No private key for manual entry
-          hasPrivateKey: false,
-        };
       }
 
       // Create the pool using the pool manager
@@ -391,7 +377,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             </label>
             
             {/* Option Selection */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <button
                 type="button"
                 onClick={() => setPoolAddressOption('create')}
@@ -423,25 +409,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                   <FileText className="h-5 w-5 text-green-400" />
                   <div className="text-left">
                     <p className="text-white font-medium">Import Wallet</p>
-                    <p className="text-gray-400 text-sm">Use private key</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPoolAddressOption('manual')}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  poolAddressOption === 'manual'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/20 bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Key className="h-5 w-5 text-blue-400" />
-                  <div className="text-left">
-                    <p className="text-white font-medium">Manual Entry</p>
-                    <p className="text-gray-400 text-sm">Enter public key</p>
+                    <p className="text-gray-400 text-sm">Private + Public Key</p>
                   </div>
                 </div>
               </button>
@@ -538,99 +506,86 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
               </div>
             )}
 
-            {/* Import Wallet Option */}
+            {/* Import Wallet Option with Public Key */}
             {poolAddressOption === 'import' && (
               <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <label className="block text-sm text-gray-300 mb-2">
-                  Import Private Key
-                </label>
-                <textarea
-                  value={importPrivateKey}
-                  onChange={(e) => {
-                    setImportPrivateKey(e.target.value);
-                    if (errors.poolAddress) {
-                      setErrors(prev => ({ ...prev, poolAddress: '' }));
-                    }
-                  }}
-                  rows={3}
-                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
-                    errors.poolAddress ? 'border-red-500' : 'border-white/20'
-                  }`}
-                  placeholder="Paste private key (comma-separated numbers, JSON array, or base64)"
-                />
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-gray-500 text-xs">
-                    Supported formats: [1,2,3...], 1,2,3... or base64
-                  </p>
-                  <button
-                    type="button"
-                    onClick={importWalletFromPrivateKey}
-                    disabled={!importPrivateKey.trim()}
-                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200"
-                  >
-                    Import
-                  </button>
-                </div>
+                <h4 className="text-white font-medium mb-4">Import Existing Wallet</h4>
                 
-                {generatedWallet && (
-                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
-                    <p className="text-green-100/80 text-xs mt-1">
-                      Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
-                    </p>
-                    <p className="text-green-100/80 text-xs mt-1">
-                      🔑 This address was derived from your private key
+                <div className="space-y-4">
+                  {/* Private Key Input */}
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-2">
+                      Private Key *
+                    </label>
+                    <textarea
+                      value={importPrivateKey}
+                      onChange={(e) => {
+                        setImportPrivateKey(e.target.value);
+                        if (errors.poolAddress) {
+                          setErrors(prev => ({ ...prev, poolAddress: '' }));
+                        }
+                      }}
+                      rows={3}
+                      className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                        errors.poolAddress ? 'border-red-500' : 'border-white/20'
+                      }`}
+                      placeholder="Paste private key (comma-separated numbers, JSON array, or base64)"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Supported formats: [1,2,3...], 1,2,3... or base64
                     </p>
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Manual Public Key Entry Option */}
-            {poolAddressOption === 'manual' && (
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <label className="block text-sm text-gray-300 mb-2">
-                  Enter Public Key (Pool Address)
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={manualPublicKey}
-                    onChange={(e) => {
-                      setManualPublicKey(e.target.value);
-                      if (errors.poolAddress) {
-                        setErrors(prev => ({ ...prev, poolAddress: '' }));
-                      }
-                    }}
-                    className={`flex-1 px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
-                      errors.poolAddress ? 'border-red-500' : 'border-white/20'
-                    }`}
-                    placeholder="Enter Solana public key address"
-                  />
-                  <button
-                    type="button"
-                    onClick={validateManualPublicKey}
-                    disabled={!manualPublicKey.trim()}
-                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200"
-                  >
-                    Validate
-                  </button>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Enter the public key of an existing Solana wallet you want to use as the pool address
-                </p>
-                
-                {generatedWallet && (
-                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <p className="text-blue-200 text-sm font-medium">✅ Public Key Validated</p>
-                    <p className="text-blue-100/80 text-xs mt-1">
-                      Pool Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                  {/* Public Key Input */}
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-2">
+                      Public Key (Optional - for verification)
+                    </label>
+                    <input
+                      type="text"
+                      value={importPublicKey}
+                      onChange={(e) => {
+                        setImportPublicKey(e.target.value);
+                        if (errors.publicKey) {
+                          setErrors(prev => ({ ...prev, publicKey: '' }));
+                        }
+                      }}
+                      className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                        errors.publicKey ? 'border-red-500' : 'border-white/20'
+                      }`}
+                      placeholder="Enter public key to verify it matches the private key"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      If provided, we'll verify this matches your private key. If empty, we'll auto-fill it.
                     </p>
-                    <p className="text-yellow-100/80 text-xs mt-1">
-                      ⚠️ Note: You won't have private key access for swaps unless you import it separately
-                    </p>
+                    {errors.publicKey && (
+                      <p className="text-red-400 text-sm mt-1">{errors.publicKey}</p>
+                    )}
                   </div>
-                )}
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={importWalletFromPrivateKey}
+                      disabled={!importPrivateKey.trim()}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200"
+                    >
+                      Import & Verify
+                    </button>
+                  </div>
+                  
+                  {generatedWallet && (
+                    <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
+                      <p className="text-green-100/80 text-xs mt-1">
+                        Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                      </p>
+                      <p className="text-green-100/80 text-xs mt-1">
+                        🔑 This address was derived from your private key
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             
