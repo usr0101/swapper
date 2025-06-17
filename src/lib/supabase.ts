@@ -106,17 +106,26 @@ export const getPool = async (collectionId: string): Promise<PoolConfig | null> 
 };
 
 export const updatePoolStats = async (collectionId: string, nftCount: number, volume: number = 0) => {
+  const updateData: { nft_count: number; } = { nft_count: nftCount };
+
   const { data, error } = await supabase
     .from('pools')
-    .update({ 
-      nft_count: nftCount,
-      total_volume: volume > 0 ? supabase.rpc('increment_volume', { pool_id: collectionId, amount: volume }) : undefined
-    })
+    .update(updateData)
     .eq('collection_id', collectionId)
     .select()
     .single();
 
   if (error) throw error;
+
+  // If there's volume, call the RPC separately to increment it
+  if (volume > 0) {
+    const { error: rpcError } = await supabase.rpc('increment_volume', { pool_id: collectionId, amount: volume });
+    if (rpcError) {
+      console.error('Error calling increment_volume RPC:', rpcError);
+      // Depending on desired behavior, you might want to throw rpcError here
+    }
+  }
+  
   return data;
 };
 

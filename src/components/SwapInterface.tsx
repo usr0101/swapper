@@ -4,8 +4,26 @@ import { SwapModal } from './SwapModal';
 import { ArrowRightLeft, Search, ArrowLeft, AlertTriangle, Loader2, RefreshCw, Upload, ExternalLink, Key } from 'lucide-react';
 import { useWallet } from '../contexts/WalletContext';
 import { getUserNFTs, getPoolNFTs, getCollectionData, getPoolNFTCount } from '../lib/solana';
-import { getAllPools, PoolConfig, updatePoolNFTCount, getPoolWalletData } from '../lib/pool-manager';
+import { getAllPools as getAllPoolsFromSupabase, updatePoolStats, getPoolWalletData } from '../lib/supabase';
 import { PublicKey } from '@solana/web3.js';
+
+// Define PoolConfig interface locally to match Supabase structure
+interface PoolConfig {
+  id: string;
+  collection_id: string;
+  collection_name: string;
+  collection_symbol: string;
+  collection_image: string;
+  collection_address: string;
+  pool_address: string;
+  swap_fee: number;
+  created_at: string;
+  created_by: string;
+  is_active: boolean;
+  nft_count: number;
+  total_volume: number;
+  description?: string;
+}
 
 export const SwapInterface: React.FC = () => {
   const { isConnected, platformActive, maintenanceMessage, address, isAdmin } = useWallet();
@@ -23,47 +41,72 @@ export const SwapInterface: React.FC = () => {
 
   // Load available pools
   useEffect(() => {
-    const pools = getAllPools().filter(pool => pool.isActive);
-    setAvailablePools(pools);
+    const loadPools = async () => {
+      try {
+        const pools = await getAllPoolsFromSupabase();
+        const activePools = pools.filter(pool => pool.is_active);
+        setAvailablePools(activePools);
+      } catch (error) {
+        console.error('Error loading pools:', error);
+        setError('Failed to load pools. Please check your connection and try again.');
+      }
+    };
+
+    loadPools();
   }, []);
 
   const filteredPools = availablePools.filter(pool => {
     const matchesSearch = !searchTerm || 
-      pool.collectionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pool.collectionSymbol.toLowerCase().includes(searchTerm.toLowerCase());
+      pool.collection_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pool.collection_symbol.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
-  const selectedPool = availablePools.find(p => p.collectionId === selectedCollection);
+  const selectedPool = availablePools.find(p => p.collection_id === selectedCollection);
 
   // FIXED: Check swap capability using the ACTUAL pool address from the pool config
-  const checkSwapCapability = (pool: PoolConfig) => {
+  const checkSwapCapability = async (pool: PoolConfig) => {
     if (!pool) return false;
     
-    console.log('🔍 Checking swap capability for pool:', pool.collectionId);
-    console.log('Pool address:', pool.poolAddress);
+    console.log('🔍 Checking swap capability for pool:', pool.collection_id);
+    console.log('Pool address:', pool.pool_address);
     
-    // CRITICAL FIX: Use the pool address directly from the pool config
-    const poolWalletData = getPoolWalletData(pool.poolAddress);
-    
-    console.log('Pool wallet data found:', !!poolWalletData);
-    if (poolWalletData) {
-      console.log('Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-      console.log('Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
-      console.log('Has private key flag:', poolWalletData.hasPrivateKey);
+    try {
+      // CRITICAL FIX: Use the pool address directly from the pool config
+      const poolWalletData = await getPoolWalletData(pool.pool_address);
+      
+      console.log('Pool wallet data found:', !!poolWalletData);
+      if (poolWalletData) {
+        console.log('Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
+        console.log('Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
+        console.log('Has private key flag:', poolWalletData.hasPrivateKey);
+      }
+      
+      // Pool has swap capability if we have the private key stored
+      const hasCapability = poolWalletData && 
+                           poolWalletData.secretKey && 
+                           poolWalletData.secretKey.trim() !== '' &&
+                           poolWalletData.hasPrivateKey === true;
+      
+      console.log('✅ Final swap capability result:', hasCapability);
+      return hasCapability;
+    } catch (error) {
+      console.error('Error checking swap capability:', error);
+      return false;
     }
-    
-    // Pool has swap capability if we have the private key stored
-    const hasCapability = poolWalletData && 
-                         poolWalletData.secretKey && 
-                         poolWalletData.secretKey.trim() !== '' &&
-                         poolWalletData.hasPrivateKey === true;
-    
-    console.log('✅ Final swap capability result:', hasCapability);
-    return hasCapability;
   };
 
-  const hasSwapCapability = selectedPool ? checkSwapCapability(selectedPool) : false;
+  const [hasSwapCapability, setHasSwapCapability] = useState(false);
+
+  // Check swap capability when pool is selected
+  useEffect(() => {
+    if (selectedPool) {
+      checkSwapCapability(selectedPool).then(setHasSwapCapability);
+    } else {
+      setHasSwapCapability(false);
+    }
+  }, [selectedPool]);
+
   const canSwap = selectedPoolNFT && selectedUserNFT && hasSwapCapability;
 
   // Load real NFTs when collection is selected
@@ -95,7 +138,7 @@ export const SwapInterface: React.FC = () => {
       // Update the pool's NFT count with the actual count
       if (poolNFTsData.length >= 0) {
         console.log('Updating pool NFT count to:', poolNFTsData.length);
-        await updatePoolNFTCount(selectedCollection);
+        await updatePoolStats(selectedCollection, poolNFTsData.length);
       }
 
       // Load user's NFTs
@@ -121,8 +164,13 @@ export const SwapInterface: React.FC = () => {
       await loadRealNFTs();
       
       // Force refresh the pools list to show updated counts
-      const refreshedPools = getAllPools().filter(pool => pool.isActive);
-      setAvailablePools(refreshedPools);
+      try {
+        const refreshedPools = await getAllPoolsFromSupabase();
+        const activePools = refreshedPools.filter(pool => pool.is_active);
+        setAvailablePools(activePools);
+      } catch (error) {
+        console.error('Error refreshing pools:', error);
+      }
     }
   };
 
@@ -140,8 +188,13 @@ export const SwapInterface: React.FC = () => {
     await loadRealNFTs();
     
     // Refresh pools list to show updated counts
-    const refreshedPools = getAllPools().filter(pool => pool.isActive);
-    setAvailablePools(refreshedPools);
+    try {
+      const refreshedPools = await getAllPoolsFromSupabase();
+      const activePools = refreshedPools.filter(pool => pool.is_active);
+      setAvailablePools(activePools);
+    } catch (error) {
+      console.error('Error refreshing pools after swap:', error);
+    }
   };
 
   const handleBackToCollections = () => {
@@ -210,7 +263,7 @@ export const SwapInterface: React.FC = () => {
         </h1>
         <p className="text-xl text-gray-300 max-w-2xl mx-auto">
           {selectedCollection 
-            ? `Swap your ${selectedPool?.collectionName} NFTs with a ${selectedPool?.swapFee} SOL fee`
+            ? `Swap your ${selectedPool?.collection_name} NFTs with a ${selectedPool?.swap_fee} SOL fee`
             : 'Choose a collection pool to start swapping NFTs on Solana devnet'
           }
         </p>
@@ -248,52 +301,44 @@ export const SwapInterface: React.FC = () => {
             </div>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 max-w-2xl mx-auto">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                <div>
+                  <p className="text-red-200 font-medium">Error Loading Pools</p>
+                  <p className="text-red-100/80 text-sm mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Pools Grid */}
           {filteredPools.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPools.map(pool => {
-                const hasSwapCapability = checkSwapCapability(pool);
-                
                 return (
                   <div
                     key={pool.id}
-                    onClick={() => setSelectedCollection(pool.collectionId)}
+                    onClick={() => setSelectedCollection(pool.collection_id)}
                     className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-200 cursor-pointer group transform hover:scale-105"
                   >
                     <div className="aspect-video relative overflow-hidden rounded-t-xl">
                       <img
-                        src={pool.collectionImage}
-                        alt={pool.collectionName}
+                        src={pool.collection_image}
+                        alt={pool.collection_name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       
-                      {/* Swap Capability Badge */}
-                      <div className={`absolute top-4 right-4 backdrop-blur-sm border px-3 py-1 rounded-lg text-sm font-medium flex items-center space-x-1 ${
-                        hasSwapCapability
-                          ? 'bg-green-500/20 border-green-500/30 text-green-200'
-                          : 'bg-red-500/20 border-red-500/30 text-red-200'
-                      }`}>
-                        {hasSwapCapability ? (
-                          <>
-                            <Key className="h-3 w-3" />
-                            <span>Swap Ready</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>No Access</span>
-                          </>
-                        )}
-                      </div>
-                      
                       <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="text-2xl font-bold text-white mb-2">{pool.collectionName}</h3>
+                        <h3 className="text-2xl font-bold text-white mb-2">{pool.collection_name}</h3>
                         <p className="text-gray-300 text-sm mb-3 line-clamp-2">{pool.description}</p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4 text-sm text-gray-300">
-                            <span>Fee: {pool.swapFee} SOL</span>
-                            <span>NFTs: {pool.nftCount}</span>
+                            <span>Fee: {pool.swap_fee} SOL</span>
+                            <span>NFTs: {pool.nft_count}</span>
                           </div>
                         </div>
                       </div>
@@ -345,14 +390,14 @@ export const SwapInterface: React.FC = () => {
             {selectedPool && (
               <div className="flex items-center space-x-4">
                 <img
-                  src={selectedPool.collectionImage}
-                  alt={selectedPool.collectionName}
+                  src={selectedPool.collection_image}
+                  alt={selectedPool.collection_name}
                   className="w-12 h-12 rounded-lg object-cover"
                 />
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{selectedPool.collectionName}</h3>
+                  <h3 className="text-lg font-semibold text-white">{selectedPool.collection_name}</h3>
                   <div className="flex items-center space-x-3 text-sm text-gray-400">
-                    <span>Fee: {selectedPool.swapFee} SOL</span>
+                    <span>Fee: {selectedPool.swap_fee} SOL</span>
                     {hasSwapCapability ? (
                       <span className="text-green-400 flex items-center space-x-1">
                         <Key className="h-3 w-3" />
@@ -426,7 +471,7 @@ export const SwapInterface: React.FC = () => {
                     <strong>Admin Instructions:</strong> To add NFTs to this pool:
                   </p>
                   <div className="text-left space-y-2 text-blue-100/80 text-sm">
-                    <p>1. Send NFTs to pool address: <code className="bg-blue-500/20 px-2 py-1 rounded text-xs">{selectedPool.poolAddress}</code></p>
+                    <p>1. Send NFTs to pool address: <code className="bg-blue-500/20 px-2 py-1 rounded text-xs">{selectedPool.pool_address}</code></p>
                     <p>2. NFTs will automatically appear in "Available for Swap"</p>
                     <p>3. Users can then swap their NFTs with pool NFTs</p>
                   </div>
@@ -543,7 +588,7 @@ export const SwapInterface: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-sm text-gray-400 mb-4">
-                      Swap Fee: <span className="text-white font-medium">{selectedPool.swapFee} SOL</span>
+                      Swap Fee: <span className="text-white font-medium">{selectedPool.swap_fee} SOL</span>
                     </div>
                     {hasSwapCapability ? (
                       <div className="text-green-400 text-xs flex items-center justify-center space-x-1">
@@ -593,8 +638,8 @@ export const SwapInterface: React.FC = () => {
         <SwapModal
           poolNFT={selectedPoolNFT}
           userNFT={selectedUserNFT}
-          swapFee={selectedPool.swapFee}
-          collectionId={selectedPool.collectionId}
+          swapFee={selectedPool.swap_fee}
+          collectionId={selectedPool.collection_id}
           onConfirm={handleSwapComplete}
           onClose={() => setShowSwapModal(false)}
         />
