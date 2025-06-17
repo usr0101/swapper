@@ -91,7 +91,14 @@ export const getAllPools = async (): Promise<PoolConfig[]> => {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  
+  // Convert total_volume from lamports to SOL for display
+  const poolsWithConvertedVolume = (data || []).map(pool => ({
+    ...pool,
+    total_volume: pool.total_volume / 1_000_000_000 // Convert lamports to SOL
+  }));
+  
+  return poolsWithConvertedVolume;
 };
 
 export const getPool = async (collectionId: string): Promise<PoolConfig | null> => {
@@ -102,6 +109,12 @@ export const getPool = async (collectionId: string): Promise<PoolConfig | null> 
     .maybeSingle();
 
   if (error) throw error;
+  
+  // Convert total_volume from lamports to SOL for display
+  if (data) {
+    data.total_volume = data.total_volume / 1_000_000_000;
+  }
+  
   return data;
 };
 
@@ -114,10 +127,16 @@ export const updatePool = async (collectionId: string, updates: Partial<PoolConf
     .single();
 
   if (error) throw error;
+  
+  // Convert total_volume from lamports to SOL for display
+  if (data) {
+    data.total_volume = data.total_volume / 1_000_000_000;
+  }
+  
   return data;
 };
 
-export const updatePoolStats = async (collectionId: string, nftCount: number, volume: number = 0) => {
+export const updatePoolStats = async (collectionId: string, nftCount: number, volumeInSOL: number = 0) => {
   const updateData: { nft_count: number; } = { nft_count: nftCount };
 
   const { data, error } = await supabase
@@ -130,9 +149,11 @@ export const updatePoolStats = async (collectionId: string, nftCount: number, vo
   if (error) throw error;
 
   // If there's volume, call the RPC separately to increment it
-  if (volume > 0) {
+  if (volumeInSOL > 0) {
     // Convert SOL to lamports (multiply by 10^9) and round to ensure integer
-    const volumeInLamports = Math.round(volume * 1_000_000_000);
+    const volumeInLamports = Math.round(volumeInSOL * 1_000_000_000);
+    
+    console.log(`💰 Adding volume: ${volumeInSOL} SOL (${volumeInLamports} lamports) to pool ${collectionId}`);
     
     const { error: rpcError } = await supabase.rpc('increment_volume', { 
       pool_id: collectionId, 
@@ -141,6 +162,11 @@ export const updatePoolStats = async (collectionId: string, nftCount: number, vo
     if (rpcError) {
       console.error('Error calling increment_volume RPC:', rpcError);
     }
+  }
+  
+  // Convert total_volume from lamports to SOL for display
+  if (data) {
+    data.total_volume = data.total_volume / 1_000_000_000;
   }
   
   return data;
@@ -158,6 +184,12 @@ export const togglePoolStatus = async (collectionId: string) => {
     .single();
 
   if (error) throw error;
+  
+  // Convert total_volume from lamports to SOL for display
+  if (data) {
+    data.total_volume = data.total_volume / 1_000_000_000;
+  }
+  
   return data;
 };
 
