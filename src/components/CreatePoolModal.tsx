@@ -164,9 +164,11 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         }
       }
       
+      // CRITICAL FIX: Ensure hasPrivateKey is set to true for imported wallets
       const wallet = {
         publicKey: derivedPublicKey, // Always use the derived public key
         secretKey: keyArray.join(','),
+        hasPrivateKey: true, // FIXED: Explicitly set this to true
       };
       
       setGeneratedWallet(wallet);
@@ -183,6 +185,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
       
       console.log('✅ Imported wallet from private key:', derivedPublicKey);
       console.log('🔑 Private key corresponds to this public key');
+      console.log('🔐 hasPrivateKey set to:', true);
     } catch (error) {
       console.error('Error importing wallet:', error);
       setErrors(prev => ({ ...prev, poolAddress: error.message || 'Invalid private key format. Supported formats: comma-separated numbers, JSON array, or base64' }));
@@ -245,12 +248,26 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
 
       if (poolAddressOption === 'create') {
         poolData.poolAddress = generatedWallet?.publicKey || '';
-        poolData.poolWalletData = generatedWallet;
+        poolData.poolWalletData = {
+          publicKey: generatedWallet?.publicKey,
+          secretKey: generatedWallet?.secretKey,
+          hasPrivateKey: true, // FIXED: Always true for created wallets
+        };
       } else if (poolAddressOption === 'import') {
         // FIXED: Use the correct public key from the imported wallet
         poolData.poolAddress = generatedWallet?.publicKey || '';
-        poolData.poolWalletData = generatedWallet;
+        poolData.poolWalletData = {
+          publicKey: generatedWallet?.publicKey,
+          secretKey: generatedWallet?.secretKey,
+          hasPrivateKey: true, // CRITICAL FIX: Always true for imported wallets with private keys
+        };
       }
+
+      console.log('🔐 Pool wallet data being created:', {
+        publicKey: poolData.poolWalletData?.publicKey,
+        hasSecretKey: !!(poolData.poolWalletData?.secretKey),
+        hasPrivateKey: poolData.poolWalletData?.hasPrivateKey,
+      });
 
       // Create the pool using the pool manager
       await createNewPool(
@@ -266,7 +283,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         poolData.poolWalletData
       );
 
-      console.log('✅ Pool created successfully');
+      console.log('✅ Pool created successfully with wallet access');
       onSubmit(poolData);
     } catch (error) {
       console.error('❌ Error creating pool:', error);
@@ -483,15 +500,14 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                       </div>
                     </div>
                     
-                    {/* Warning */}
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    {/* Success Message */}
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
                       <div className="flex items-start space-x-2">
-                        <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5" />
+                        <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
                         <div className="text-sm">
-                          <p className="text-red-200 font-medium">Security Warning</p>
-                          <p className="text-red-100/80 text-xs mt-1">
-                            Save the private key securely! You'll need it to manage the pool wallet. 
-                            Never share it with anyone.
+                          <p className="text-green-200 font-medium">Wallet Generated Successfully</p>
+                          <p className="text-green-100/80 text-xs mt-1">
+                            This wallet will have full swap access. Save the private key securely!
                           </p>
                         </div>
                       </div>
@@ -581,7 +597,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                         Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
                       </p>
                       <p className="text-green-100/80 text-xs mt-1">
-                        🔑 This address was derived from your private key
+                        🔑 This wallet will have full swap access
                       </p>
                     </div>
                   )}
@@ -702,15 +718,17 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             />
           </div>
 
-          {/* Warning */}
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          {/* Success Info */}
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
             <div className="flex items-start space-x-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />
+              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
               <div className="text-sm">
-                <p className="text-yellow-200 font-medium mb-1">Pool Creation</p>
-                <p className="text-yellow-100/80">
-                  Make sure the collection address is valid and exists on Solana. 
-                  The pool address will receive NFTs for swapping. Keep wallet credentials secure!
+                <p className="text-green-200 font-medium mb-1">Pool Creation</p>
+                <p className="text-green-100/80">
+                  {poolAddressOption === 'create' 
+                    ? 'A new wallet will be generated with full swap access. The pool will be able to execute atomic swaps immediately.'
+                    : 'Your imported wallet will have full swap access. Make sure you have the private key to enable atomic swaps.'
+                  }
                 </p>
               </div>
             </div>
