@@ -47,6 +47,9 @@ export interface AdminSettings {
   network: 'devnet' | 'mainnet-beta';
   created_at: string;
   updated_at: string;
+  platform_name?: string;
+  platform_description?: string;
+  platform_icon?: string;
 }
 
 export interface ApiConfig {
