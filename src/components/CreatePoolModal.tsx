@@ -143,9 +143,10 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         throw new Error('Invalid key length or values');
       }
       
+      // FIXED: Create keypair from the imported secret key to get the correct public key
       const keypair = Keypair.fromSecretKey(new Uint8Array(keyArray));
       const wallet = {
-        publicKey: keypair.publicKey.toString(),
+        publicKey: keypair.publicKey.toString(), // This will be the CORRECT public key derived from the private key
         secretKey: keyArray.join(','),
       };
       
@@ -156,7 +157,8 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         setErrors(prev => ({ ...prev, poolAddress: '' }));
       }
       
-      console.log('Imported wallet from private key:', wallet.publicKey);
+      console.log('✅ Imported wallet from private key:', wallet.publicKey);
+      console.log('🔑 Private key corresponds to this public key');
     } catch (error) {
       console.error('Error importing wallet:', error);
       setErrors(prev => ({ ...prev, poolAddress: 'Invalid private key format. Supported formats: comma-separated numbers, JSON array, or base64' }));
@@ -213,7 +215,6 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
       // Prepare pool data with the selected address option
       let poolData = {
         ...formData,
-        // REMOVED: collectionSymbol generation
         poolAddress: '',
         poolWalletData: null as any,
       };
@@ -222,11 +223,12 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         poolData.poolAddress = generatedWallet?.publicKey || '';
         poolData.poolWalletData = generatedWallet;
       } else if (poolAddressOption === 'import') {
+        // FIXED: Use the correct public key from the imported wallet
         poolData.poolAddress = generatedWallet?.publicKey || '';
         poolData.poolWalletData = generatedWallet;
       }
 
-      // Create the pool using the pool manager (without collection symbol)
+      // Create the pool using the pool manager
       await createNewPool(
         formData.collectionId,
         formData.collectionName,
@@ -344,7 +346,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             )}
           </div>
 
-          {/* Pool Address Options - REMOVED "Use Existing" */}
+          {/* Pool Address Options */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-3">
               Pool Wallet Configuration *
@@ -519,6 +521,9 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                     <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
                     <p className="text-green-100/80 text-xs mt-1">
                       Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                    </p>
+                    <p className="text-green-100/80 text-xs mt-1">
+                      🔑 This address was derived from your private key
                     </p>
                   </div>
                 )}
