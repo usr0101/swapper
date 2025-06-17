@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Upload, AlertTriangle, CheckCircle, Loader2, Key, Plus, Copy, Eye, EyeOff, FileText } from 'lucide-react';
 import { createNewPool } from '../lib/pool-manager';
 import { useWallet } from '../contexts/WalletContext';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 interface CreatePoolModalProps {
   onClose: () => void;
@@ -21,9 +21,10 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     description: '',
   });
   
-  // Pool address options - removed "existing" option
-  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'import'>('create');
+  // Pool address options
+  const [poolAddressOption, setPoolAddressOption] = useState<'create' | 'import' | 'manual'>('create');
   const [importPrivateKey, setImportPrivateKey] = useState('');
+  const [manualPublicKey, setManualPublicKey] = useState('');
   const [generatedWallet, setGeneratedWallet] = useState<{
     publicKey: string;
     secretKey: string;
@@ -77,6 +78,16 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
           }
         } catch {
           newErrors.poolAddress = 'Invalid private key format';
+        }
+      }
+    } else if (poolAddressOption === 'manual') {
+      if (!manualPublicKey.trim()) {
+        newErrors.poolAddress = 'Public key is required';
+      } else {
+        try {
+          new PublicKey(manualPublicKey.trim());
+        } catch {
+          newErrors.poolAddress = 'Invalid public key format';
         }
       }
     } else if (poolAddressOption === 'create' && !generatedWallet) {
@@ -165,6 +176,26 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
     }
   };
 
+  const validateManualPublicKey = () => {
+    try {
+      const publicKey = new PublicKey(manualPublicKey.trim());
+      setGeneratedWallet({
+        publicKey: publicKey.toString(),
+        secretKey: '', // No private key for manual entry
+      });
+      
+      // Clear any existing errors
+      if (errors.poolAddress) {
+        setErrors(prev => ({ ...prev, poolAddress: '' }));
+      }
+      
+      console.log('✅ Manual public key validated:', publicKey.toString());
+    } catch (error) {
+      console.error('Error validating public key:', error);
+      setErrors(prev => ({ ...prev, poolAddress: 'Invalid public key format' }));
+    }
+  };
+
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -226,6 +257,13 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
         // FIXED: Use the correct public key from the imported wallet
         poolData.poolAddress = generatedWallet?.publicKey || '';
         poolData.poolWalletData = generatedWallet;
+      } else if (poolAddressOption === 'manual') {
+        poolData.poolAddress = generatedWallet?.publicKey || '';
+        poolData.poolWalletData = {
+          publicKey: generatedWallet?.publicKey || '',
+          secretKey: '', // No private key for manual entry
+          hasPrivateKey: false,
+        };
       }
 
       // Create the pool using the pool manager
@@ -353,7 +391,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             </label>
             
             {/* Option Selection */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-4 mb-4">
               <button
                 type="button"
                 onClick={() => setPoolAddressOption('create')}
@@ -366,8 +404,8 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                 <div className="flex items-center space-x-3">
                   <Plus className="h-5 w-5 text-purple-400" />
                   <div className="text-left">
-                    <p className="text-white font-medium">Create New Wallet</p>
-                    <p className="text-gray-400 text-sm">Generate a new Solana wallet</p>
+                    <p className="text-white font-medium">Create New</p>
+                    <p className="text-gray-400 text-sm">Generate wallet</p>
                   </div>
                 </div>
               </button>
@@ -385,7 +423,25 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                   <FileText className="h-5 w-5 text-green-400" />
                   <div className="text-left">
                     <p className="text-white font-medium">Import Wallet</p>
-                    <p className="text-gray-400 text-sm">Use existing private key</p>
+                    <p className="text-gray-400 text-sm">Use private key</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPoolAddressOption('manual')}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                  poolAddressOption === 'manual'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Key className="h-5 w-5 text-blue-400" />
+                  <div className="text-left">
+                    <p className="text-white font-medium">Manual Entry</p>
+                    <p className="text-gray-400 text-sm">Enter public key</p>
                   </div>
                 </div>
               </button>
@@ -524,6 +580,54 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
                     </p>
                     <p className="text-green-100/80 text-xs mt-1">
                       🔑 This address was derived from your private key
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Manual Public Key Entry Option */}
+            {poolAddressOption === 'manual' && (
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <label className="block text-sm text-gray-300 mb-2">
+                  Enter Public Key (Pool Address)
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={manualPublicKey}
+                    onChange={(e) => {
+                      setManualPublicKey(e.target.value);
+                      if (errors.poolAddress) {
+                        setErrors(prev => ({ ...prev, poolAddress: '' }));
+                      }
+                    }}
+                    className={`flex-1 px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                      errors.poolAddress ? 'border-red-500' : 'border-white/20'
+                    }`}
+                    placeholder="Enter Solana public key address"
+                  />
+                  <button
+                    type="button"
+                    onClick={validateManualPublicKey}
+                    disabled={!manualPublicKey.trim()}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200"
+                  >
+                    Validate
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  Enter the public key of an existing Solana wallet you want to use as the pool address
+                </p>
+                
+                {generatedWallet && (
+                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-blue-200 text-sm font-medium">✅ Public Key Validated</p>
+                    <p className="text-blue-100/80 text-xs mt-1">
+                      Pool Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                    </p>
+                    <p className="text-yellow-100/80 text-xs mt-1">
+                      ⚠️ Note: You won't have private key access for swaps unless you import it separately
                     </p>
                   </div>
                 )}
