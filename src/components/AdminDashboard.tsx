@@ -184,8 +184,8 @@ export const AdminDashboard: React.FC = () => {
     try {
       console.log('💾 Saving admin settings:', adminSettings);
 
-      // Save admin settings
-      await saveAdminSettings({
+      // CRITICAL FIX: Save admin settings with proper structure
+      const settingsToSave = {
         user_wallet: address,
         fee_collector_wallet: adminSettings.feeCollectorWallet,
         default_swap_fee: parseFloat(adminSettings.defaultSwapFee),
@@ -196,15 +196,23 @@ export const AdminDashboard: React.FC = () => {
         platform_name: adminSettings.platformName,
         platform_description: adminSettings.platformDescription,
         platform_icon: adminSettings.platformIcon,
-      });
+      };
+
+      console.log('💾 Saving settings to Supabase:', settingsToSave);
+      const savedSettings = await saveAdminSettings(settingsToSave);
+      console.log('✅ Settings saved successfully:', savedSettings);
 
       // Save API config
-      await saveApiConfig({
+      const apiConfigToSave = {
         user_wallet: address,
         helius_api_key: apiConfig.heliusApiKey,
         helius_rpc: apiConfig.heliusRpc,
         network: apiConfig.network as 'devnet' | 'mainnet-beta',
-      });
+      };
+
+      console.log('💾 Saving API config to Supabase:', apiConfigToSave);
+      const savedApiConfig = await saveApiConfig(apiConfigToSave);
+      console.log('✅ API config saved successfully:', savedApiConfig);
 
       // CRITICAL FIX: Update platform branding in context immediately after saving
       console.log('🎨 Updating platform branding in context after save...');
@@ -229,9 +237,38 @@ export const AdminDashboard: React.FC = () => {
         }, 2000);
       }
 
+      // CRITICAL FIX: Verify the save by reloading from database
+      console.log('🔍 Verifying save by reloading from database...');
+      setTimeout(async () => {
+        try {
+          const verifySettings = await getAdminSettings(address);
+          console.log('🔍 Verification - settings in database:', verifySettings);
+          
+          if (verifySettings) {
+            console.log('✅ Verification successful - settings are in database');
+            console.log('Platform name in DB:', verifySettings.platform_name);
+            console.log('Platform description in DB:', verifySettings.platform_description);
+            console.log('Platform icon in DB:', verifySettings.platform_icon);
+          } else {
+            console.error('❌ Verification failed - no settings found in database');
+          }
+        } catch (error) {
+          console.error('❌ Verification error:', error);
+        }
+      }, 1000);
     } catch (error) {
       console.error('❌ Error saving settings:', error);
-      alert('Failed to save settings. Please try again.');
+      
+      // Show detailed error message
+      let errorMessage = 'Failed to save settings. ';
+      if (error.message) {
+        errorMessage += error.message;
+      } else {
+        errorMessage += 'Please check your connection and try again.';
+      }
+      
+      alert(errorMessage);
+      console.error('Full error details:', error);
     } finally {
       setSaving(false);
     }
