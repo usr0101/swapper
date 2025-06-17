@@ -538,7 +538,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-200 text-sm font-medium">Total Pools</p>
-                  <p className="text-3xl font-bold text-white">{poolStats.totalPools}</p>
+                  <p className="text-3xl font-bold text-white">{poolStats?.totalPools || 0}</p>
                 </div>
                 <div className="bg-blue-500/20 p-3 rounded-lg">
                   <Upload className="h-6 w-6 text-blue-400" />
@@ -550,7 +550,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-200 text-sm font-medium">Active Pools</p>
-                  <p className="text-3xl font-bold text-white">{poolStats.activePools}</p>
+                  <p className="text-3xl font-bold text-white">{poolStats?.activePools || 0}</p>
                 </div>
                 <div className="bg-green-500/20 p-3 rounded-lg">
                   <TrendingUp className="h-6 w-6 text-green-400" />
@@ -562,7 +562,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-200 text-sm font-medium">Total NFTs</p>
-                  <p className="text-3xl font-bold text-white">{poolStats.totalNFTs}</p>
+                  <p className="text-3xl font-bold text-white">{poolStats?.totalNFTs || 0}</p>
                 </div>
                 <div className="bg-purple-500/20 p-3 rounded-lg">
                   <Eye className="h-6 w-6 text-purple-400" />
@@ -574,7 +574,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-yellow-200 text-sm font-medium">Total Volume</p>
-                  <p className="text-3xl font-bold text-white">{poolStats.totalVolume.toFixed(2)} SOL</p>
+                  <p className="text-3xl font-bold text-white">{(poolStats?.totalVolume || 0).toFixed(2)} SOL</p>
                 </div>
                 <div className="bg-yellow-500/20 p-3 rounded-lg">
                   <TrendingUp className="h-6 w-6 text-yellow-400" />
@@ -619,9 +619,9 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-white font-medium">{pool.collectionName}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-gray-300">{pool.nftCount}</td>
+                        <td className="py-4 px-6 text-gray-300">{pool.nftCount || 0}</td>
                         <td className="py-4 px-6">
-                          <span className="text-green-400 font-medium">{pool.totalVolume.toFixed(2)} SOL</span>
+                          <span className="text-green-400 font-medium">{(pool.totalVolume || 0).toFixed(2)} SOL</span>
                         </td>
                         <td className="py-4 px-6">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -722,8 +722,8 @@ export const AdminDashboard: React.FC = () => {
                       <div className="absolute bottom-4 left-4 right-4">
                         <h3 className="text-xl font-bold text-white mb-1">{pool.collectionName}</h3>
                         <div className="flex items-center space-x-4 text-sm text-gray-300">
-                          <span>Fee: {pool.swapFee} SOL</span>
-                          <span>NFTs: {pool.nftCount}</span>
+                          <span>Fee: {pool.swapFee || 0} SOL</span>
+                          <span>NFTs: {pool.nftCount || 0}</span>
                         </div>
                       </div>
                     </div>
