@@ -3,13 +3,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-nft_swap = "PLACEHOLDER_PROGRAM_ID_LOCALNET"
+nft_swap = "11111111111111111111111111111111"
 
 [programs.devnet]
-nft_swap = "PLACEHOLDER_PROGRAM_ID_DEVNET"
+nft_swap = "11111111111111111111111111111111"
 
 [programs.mainnet]
-nft_swap = "PLACEHOLDER_PROGRAM_ID_MAINNET"
+nft_swap = "11111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
