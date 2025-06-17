@@ -259,7 +259,9 @@ export const storePoolWallet = async (poolAddress: string, walletData: {
       public_key: walletData.publicKey,
       encrypted_secret_key: hasValidSecretKey ? encryptSecretKey(walletData.secretKey) : '',
       has_private_key: finalHasPrivateKey,
-    }])
+    }], {
+      onConflict: 'pool_address'
+    })
     .select()
     .single();
 
@@ -352,7 +354,9 @@ export const saveAdminSettings = async (settings: Omit<AdminSettings, 'id' | 'cr
       maintenance_message: settings.maintenance_message,
       helius_api_key: settings.helius_api_key,
       network: settings.network,
-    }])
+    }], {
+      onConflict: 'user_wallet'
+    })
     .select()
     .single();
 
@@ -380,7 +384,9 @@ export const saveApiConfig = async (config: Omit<ApiConfig, 'id' | 'created_at' 
       helius_api_key: config.helius_api_key,
       helius_rpc: config.helius_rpc,
       network: config.network,
-    }])
+    }], {
+      onConflict: 'user_wallet'
+    })
     .select()
     .single();
 
