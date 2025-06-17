@@ -457,16 +457,6 @@ export const SwapInterface: React.FC = () => {
                         <Loader2 className="h-3 w-3 animate-spin" />
                         <span>Checking...</span>
                       </span>
-                    ) : hasSwapCapability === true ? (
-                      <span className="text-green-400 flex items-center space-x-1">
-                        <Key className="h-3 w-3" />
-                        <span>Swap Ready</span>
-                      </span>
-                    ) : hasSwapCapability === false ? (
-                      <span className="text-red-400 flex items-center space-x-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>No Access</span>
-                      </span>
                     ) : null}
                     {collectionStats?.lastUpdated && (
                       <span className="text-green-400">• Live Data</span>
