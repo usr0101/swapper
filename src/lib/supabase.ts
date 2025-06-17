@@ -99,9 +99,9 @@ export const getPool = async (collectionId: string): Promise<PoolConfig | null> 
     .from('pools')
     .select('*')
     .eq('collection_id', collectionId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   return data;
 };
 
@@ -195,9 +195,9 @@ export const getPoolWalletData = async (poolAddress: string) => {
     .from('pool_wallets')
     .select('*')
     .eq('pool_address', poolAddress)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   
   if (data) {
     return {
@@ -216,9 +216,9 @@ export const getAdminSettings = async (userWallet: string): Promise<AdminSetting
     .from('admin_settings')
     .select('*')
     .eq('user_wallet', userWallet)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   return data;
 };
 
@@ -247,9 +247,9 @@ export const getApiConfig = async (userWallet: string): Promise<ApiConfig | null
     .from('api_configs')
     .select('*')
     .eq('user_wallet', userWallet)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   return data;
 };
 
