@@ -38,16 +38,21 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const accountCreationBuffer = 0.002; // Buffer for potential account creation
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // FIXED: Prevent background scrolling when modal is open
+  // FIXED: Prevent background scrolling when modal is open with proper viewport lock
   useEffect(() => {
     // Store current scroll position
     const scrollY = window.scrollY;
     
-    // Disable body scroll and fix position
+    // Get current viewport dimensions
+    const viewportHeight = window.innerHeight;
+    
+    // Disable body scroll and fix position to cover full viewport
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.left = '0';
     document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.height = `${viewportHeight}px`;
     document.body.style.overflow = 'hidden';
 
     return () => {
@@ -56,6 +61,8 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       document.body.style.top = '';
       document.body.style.left = '';
       document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
       document.body.style.overflow = '';
       
       // Restore scroll position
@@ -240,8 +247,8 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   // Show loading while checking pool access
   if (hasPoolAccess === null) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl w-full max-w-lg p-6 relative">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] m-0 p-0" style={{ minHeight: '100vh', minWidth: '100vw' }}>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl w-full max-w-lg p-6 relative mx-4">
           <div className="text-center">
             <Loader2 className="h-8 w-8 text-purple-500 animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">Checking Pool Access</h2>
@@ -253,8 +260,20 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-0">
-      {/* FIXED: Full viewport modal container with proper positioning */}
+    <div 
+      className="fixed bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] m-0 p-0" 
+      style={{ 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        width: '100vw', 
+        height: '100vh',
+        minHeight: '100vh',
+        minWidth: '100vw'
+      }}
+    >
+      {/* FIXED: Full viewport modal container with absolute positioning */}
       <div className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] sm:m-4 bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative overflow-hidden">
         {/* Fixed header */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-b border-white/10">
