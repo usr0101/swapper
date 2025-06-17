@@ -33,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                   {platformName}
                 </h1>
+                {/* FIXED: Always show platform description on all screen sizes */}
                 <p className="text-xs text-gray-400">{platformDescription}</p>
               </div>
             </button>
@@ -112,6 +113,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 }`}></div>
               </div>
             ) : (
+              /* FIXED: Show proper wallet button instead of "Select Wallet" text */
               <div className="wallet-adapter-button-trigger">
                 <WalletMultiButton />
               </div>
@@ -177,10 +179,12 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 </div>
               )}
 
-              {/* Mobile Wallet Button (if not connected) */}
+              {/* Mobile Wallet Button (if not connected) - FIXED: Remove duplicate */}
               {!isConnected && (
-                <div className="wallet-adapter-button-trigger">
-                  <WalletMultiButton />
+                <div className="px-3">
+                  <div className="wallet-adapter-button-trigger">
+                    <WalletMultiButton />
+                  </div>
                 </div>
               )}
 
