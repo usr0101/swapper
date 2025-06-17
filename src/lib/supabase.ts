@@ -131,7 +131,13 @@ export const updatePoolStats = async (collectionId: string, nftCount: number, vo
 
   // If there's volume, call the RPC separately to increment it
   if (volume > 0) {
-    const { error: rpcError } = await supabase.rpc('increment_volume', { pool_id: collectionId, amount: volume });
+    // Convert SOL to lamports (multiply by 10^9) and round to ensure integer
+    const volumeInLamports = Math.round(volume * 1_000_000_000);
+    
+    const { error: rpcError } = await supabase.rpc('increment_volume', { 
+      pool_id: collectionId, 
+      amount: volumeInLamports 
+    });
     if (rpcError) {
       console.error('Error calling increment_volume RPC:', rpcError);
     }
