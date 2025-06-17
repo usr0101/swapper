@@ -338,11 +338,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 ) : (
                   <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
                 )}
-                <div className="text-sm">
-                  <p className={`font-medium mb-1 ${hasPoolAccess ? 'text-green-200' : 'text-red-200'}`}>
-                    {hasPoolAccess ? 'Ready to Swap' : 'Swap Unavailable'}
-                  </p>
-                </div>
               </div>
             </div>
 
