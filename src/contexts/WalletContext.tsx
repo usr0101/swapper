@@ -61,16 +61,16 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
   // Platform branding state
   const [platformName, setPlatformName] = useState(() => {
-    // Load from localStorage as dynamic default, fallback to hardcoded
-    return localStorage.getItem('platform_name') || 'Swapper';
+    // Start with hardcoded default, will be updated from database
+    return 'Swapper';
   });
   const [platformDescription, setPlatformDescription] = useState(() => {
-    return localStorage.getItem('platform_description') || 'Real NFT Exchange';
+    return 'Real NFT Exchange';
   });
   const [platformIcon, setPlatformIcon] = useState(() => {
-    return localStorage.getItem('platform_icon') || '⚡';
+    return '⚡';
   });
-  const [brandingLoaded, setBrandingLoaded] = useState(true); // Start as loaded since we have defaults
+  const [brandingLoaded, setBrandingLoaded] = useState(false); // Start as not loaded
   const [brandingLoading, setBrandingLoading] = useState(false); // No loading needed initially
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
@@ -86,22 +86,36 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     const loadGlobalBranding = async () => {
       try {
+        setBrandingLoading(true);
         console.log('🌍 Loading platform branding from database...');
+        
+        // FIRST: Try to load from localStorage as cache
+        const cachedName = localStorage.getItem('platform_name');
+        const cachedDescription = localStorage.getItem('platform_description');
+        const cachedIcon = localStorage.getItem('platform_icon');
+        
+        if (cachedName && cachedDescription && cachedIcon) {
+          console.log('📦 Using cached branding while loading from database...');
+          setPlatformName(cachedName);
+          setPlatformDescription(cachedDescription);
+          setPlatformIcon(cachedIcon);
+        }
+        
         const branding = await getGlobalPlatformBranding();
         
         if (branding) {
           console.log('✅ Platform branding loaded from database:', branding);
           
-          // Update current state
+          // Update current state with database values
           setPlatformName(branding.platform_name);
           setPlatformDescription(branding.platform_description);
           setPlatformIcon(branding.platform_icon);
           
-          // CRITICAL: Update localStorage defaults for next app load
+          // Update localStorage cache for next app load
           localStorage.setItem('platform_name', branding.platform_name);
           localStorage.setItem('platform_description', branding.platform_description);
           localStorage.setItem('platform_icon', branding.platform_icon);
-          console.log('💾 Updated localStorage defaults for next app load');
+          console.log('💾 Updated localStorage cache for next app load');
           
           // Also update other platform settings if available
           if (branding.platform_active !== undefined) {
@@ -114,13 +128,35 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setNetwork(branding.network);
           }
         } else {
-          console.log('⚠️ No platform branding found in database, using defaults');
-          // Keep current defaults (from localStorage or hardcoded fallback)
+          console.log('⚠️ No platform branding found in database');
+          
+          // If no cached values and no database values, use hardcoded defaults
+          if (!cachedName || !cachedDescription || !cachedIcon) {
+            console.log('Using hardcoded defaults');
+            localStorage.setItem('platform_name', 'Swapper');
+            localStorage.setItem('platform_description', 'Real NFT Exchange');
+            localStorage.setItem('platform_icon', '⚡');
+          }
         }
       } catch (error) {
         console.error('❌ Error loading platform branding from database:', error);
-        // Keep current defaults on error (from localStorage or hardcoded fallback)
-        console.log('Using existing defaults due to database error');
+        
+        // On error, try to use cached values
+        const cachedName = localStorage.getItem('platform_name');
+        const cachedDescription = localStorage.getItem('platform_description');
+        const cachedIcon = localStorage.getItem('platform_icon');
+        
+        if (cachedName && cachedDescription && cachedIcon) {
+          console.log('Using cached values due to database error');
+          setPlatformName(cachedName);
+          setPlatformDescription(cachedDescription);
+          setPlatformIcon(cachedIcon);
+        } else {
+          console.log('Using hardcoded defaults due to database error and no cache');
+        }
+      } finally {
+        setBrandingLoaded(true);
+        setBrandingLoading(false);
       }
     };
 
