@@ -11,21 +11,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Dynamic Title and Meta Tags (will be updated by JavaScript) -->
-    <title id="dynamic-title">Swapper - Real NFT Exchange</title>
-    <meta name="description" id="dynamic-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    <title id="dynamic-title">Loading...</title>
+    <meta name="description" id="dynamic-description" content="Loading platform..." />
     
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" id="og-title" content="Swapper - Real NFT Exchange" />
-    <meta property="og:description" id="og-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    <meta property="og:title" id="og-title" content="Loading..." />
+    <meta property="og:description" id="og-description" content="Loading platform..." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://statuesque-piroshki-82ea55.netlify.app" />
     <meta property="og:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&h=630&fit=crop&crop=center" />
-    <meta property="og:site_name" id="og-site-name" content="Swapper" />
+    <meta property="og:site_name" id="og-site-name" content="Loading..." />
     
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" id="twitter-title" content="Swapper - Real NFT Exchange" />
-    <meta name="twitter:description" id="twitter-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    <meta name="twitter:title" id="twitter-title" content="Loading..." />
+    <meta name="twitter:description" id="twitter-description" content="Loading platform..." />
     <meta name="twitter:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&h=630&fit=crop&crop=center" />
     
     <!-- Additional Meta Tags -->
@@ -45,8 +45,24 @@
     
     <!-- Dynamic Meta Update Script -->
     <script>
+      // Initialize with cached values immediately if available
+      (function() {
+        const cachedName = localStorage.getItem('platform_name');
+        const cachedDescription = localStorage.getItem('platform_description');
+        const cachedIcon = localStorage.getItem('platform_icon');
+        
+        if (cachedName && cachedDescription && cachedIcon) {
+          console.log('🚀 Using cached branding for immediate display');
+          updateMetaTags(cachedName, cachedDescription, cachedIcon);
+        } else {
+          // Set defaults immediately
+          console.log('🚀 Using default branding for immediate display');
+          updateMetaTags('Swapper', 'Real NFT Exchange', '⚡');
+        }
+      })();
+      
       // Function to update meta tags dynamically
-      window.updateMetaTags = function(platformName, platformDescription, platformIcon) {
+      function updateMetaTags(platformName, platformDescription, platformIcon) {
         const title = `${platformName} - ${platformDescription}`;
         const description = `${platformDescription} - Swap NFTs on Solana blockchain with ${platformName}`;
         
@@ -78,7 +94,10 @@
         }
         
         console.log('✅ Meta tags updated:', { title, description, icon: platformIcon });
-      };
+      }
+      
+      // Make function globally available
+      window.updateMetaTags = updateMetaTags;
       
       // Listen for platform branding updates
       window.addEventListener('platformBrandingUpdated', function(event) {
