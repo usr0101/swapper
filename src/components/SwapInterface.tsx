@@ -655,11 +655,6 @@ export const SwapInterface: React.FC = () => {
                         <Loader2 className="h-3 w-3 animate-spin" />
                         <span>Checking swap capability...</span>
                       </div>
-                    ) : hasSwapCapability === true ? (
-                      <div className="text-green-400 text-xs flex items-center justify-center space-x-1">
-                        <Key className="h-3 w-3" />
-                        <span>Swap available</span>
-                      </div>
                     ) : hasSwapCapability === false ? (
                       <div className="text-red-400 text-xs flex items-center justify-center space-x-1">
                         <AlertTriangle className="h-3 w-3" />
