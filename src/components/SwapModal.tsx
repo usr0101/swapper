@@ -202,9 +202,9 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       case 'validating':
         return 'Validating NFTs, collection, and swap requirements...';
       case 'processing':
-        return 'Executing atomic swap on Solana blockchain...';
+        return 'Executing swap on Solana blockchain...';
       case 'success':
-        return 'Atomic swap completed successfully!';
+        return 'Swap completed successfully!';
       case 'error':
         return error || 'Swap failed. Please try again.';
       default:
@@ -254,7 +254,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               <div className="mb-4 p-3 rounded-lg border bg-green-500/10 border-green-500/20">
                 <div className="flex items-center space-x-2">
                   <Key className="h-4 w-4 text-green-400" />
-                  <span className="text-green-200 text-sm font-medium">Atomic Swap Available</span>
+                  <span className="text-green-200 text-sm font-medium">Swap Available</span>
                 </div>
                 <p className="text-xs mt-1 opacity-80 text-green-100">
                   Both NFTs will be exchanged simultaneously in one transaction
@@ -301,7 +301,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               </div>
             </div>
 
-            {/* ENHANCED Transaction Details with visible costs */}
+            {/* Transaction Details */}
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Swap Fee</span>
@@ -318,7 +318,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Transaction Type</span>
                 <span className={`text-sm font-medium ${hasPoolAccess ? 'text-green-400' : 'text-red-400'}`}>
-                  {hasPoolAccess ? 'Atomic Swap' : 'Not Available'}
+                  {hasPoolAccess ? 'Swap' : 'Not Available'}
                 </span>
               </div>
               <div className="border-t border-white/10 pt-3">
@@ -346,11 +346,11 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 )}
                 <div className="text-sm">
                   <p className={`font-medium mb-1 ${hasPoolAccess ? 'text-green-200' : 'text-red-200'}`}>
-                    {hasPoolAccess ? 'Atomic Transaction Ready' : 'Swap Unavailable'}
+                    {hasPoolAccess ? 'Ready to Swap' : 'Swap Unavailable'}
                   </p>
                   <p className={`${hasPoolAccess ? 'text-green-100/80' : 'text-red-100/80'}`}>
                     {hasPoolAccess 
-                      ? 'This will execute a complete atomic swap. Both NFTs will be verified and exchanged simultaneously. The swap fee will be sent to the configured fee collector wallet. This action cannot be undone.'
+                      ? 'Both NFTs will be verified and exchanged simultaneously. This action cannot be undone.'
                       : 'This pool cannot execute swaps because it lacks the necessary wallet access. Both NFTs must be exchanged simultaneously, or the transaction will not proceed.'
                     }
                   </p>
@@ -371,7 +371,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 ? 'Connect Wallet First'
                 : !hasPoolAccess
                 ? 'Swap Not Available'
-                : 'Execute Atomic Swap'
+                : 'Execute Swap'
               }
             </button>
           </>
@@ -385,7 +385,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 <span className="text-blue-200">
                   {swapStatus === 'validating' 
                     ? 'Validating swap requirements...' 
-                    : 'Broadcasting atomic transaction...'
+                    : 'Broadcasting transaction...'
                   }
                 </span>
               </div>
@@ -393,7 +393,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
             <p className="text-gray-400 text-sm">
               {swapStatus === 'validating' 
                 ? 'Verifying both NFTs are from the same collection, checking ownership, and validating wallet balance...'
-                : 'Please confirm the transaction in your wallet. Both NFTs will be exchanged simultaneously and the swap fee will be sent to the fee collector...'
+                : 'Please confirm the transaction in your wallet. Both NFTs will be exchanged simultaneously...'
               }
             </p>
             {validationResult && (
@@ -412,10 +412,10 @@ export const SwapModal: React.FC<SwapModalProps> = ({
             <div className="mb-6">
               <div className="inline-flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 mb-4">
                 <CheckCircle className="h-4 w-4" />
-                <span className="text-green-200">Atomic swap confirmed</span>
+                <span className="text-green-200">Swap confirmed</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
-                Your NFT atomic swap has been executed successfully! Both NFTs have been exchanged simultaneously and the swap fee has been sent to the fee collector.
+                Your NFT swap has been executed successfully! Both NFTs have been exchanged simultaneously.
               </p>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
                 <p className="text-blue-200 text-sm">
@@ -424,11 +424,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 <p className="text-blue-100/80 text-xs mt-1">
                   <strong>Type:</strong> {txData.type} | <strong>Instructions:</strong> {txData.instructions}
                 </p>
-                {txData.feeCollector && (
-                  <p className="text-blue-100/80 text-xs mt-1">
-                    <strong>Fee Collector:</strong> {txData.feeCollector.slice(0, 8)}...{txData.feeCollector.slice(-8)}
-                  </p>
-                )}
                 <p className="text-blue-100/80 text-xs mt-1">{txData.note}</p>
               </div>
               {txData.signature && (
