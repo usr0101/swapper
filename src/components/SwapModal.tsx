@@ -38,12 +38,12 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const accountCreationBuffer = 0.002;
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // Prevent background scrolling and fix margin-top issue
+  // CRITICAL FIX: Prevent background scrolling and completely fix margin-top issue
   useEffect(() => {
     // Store current scroll position
     const scrollY = window.scrollY;
     
-    // Completely lock the body and remove any potential margins
+    // Get the original body styles
     const originalBodyStyle = {
       position: document.body.style.position,
       top: document.body.style.top,
@@ -54,23 +54,43 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       overflow: document.body.style.overflow,
       margin: document.body.style.margin,
       padding: document.body.style.padding,
+      boxSizing: document.body.style.boxSizing,
     };
     
-    // Apply full viewport lock with zero margins
+    // CRITICAL FIX: Apply complete viewport lock with zero margins and proper box-sizing
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.left = '0';
     document.body.style.right = '0';
-    document.body.style.width = '100%';
+    document.body.style.width = '100vw';
     document.body.style.height = '100vh';
     document.body.style.overflow = 'hidden';
     document.body.style.margin = '0';
     document.body.style.padding = '0';
+    document.body.style.boxSizing = 'border-box';
+
+    // CRITICAL FIX: Also lock the html element to prevent any margin issues
+    const originalHtmlStyle = {
+      margin: document.documentElement.style.margin,
+      padding: document.documentElement.style.padding,
+      overflow: document.documentElement.style.overflow,
+      height: document.documentElement.style.height,
+    };
+    
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.height = '100vh';
 
     return () => {
-      // Restore all original styles
+      // Restore all original body styles
       Object.entries(originalBodyStyle).forEach(([key, value]) => {
         document.body.style[key as any] = value;
+      });
+      
+      // Restore all original html styles
+      Object.entries(originalHtmlStyle).forEach(([key, value]) => {
+        document.documentElement.style[key as any] = value;
       });
       
       // Restore scroll position
@@ -228,7 +248,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   if (hasPoolAccess === null) {
     return (
       <div 
-        className="fixed bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
         style={{ 
           position: 'fixed',
           top: 0, 
@@ -254,7 +274,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
 
   return (
     <div 
-      className="fixed bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
       style={{ 
         position: 'fixed',
         top: 0, 
@@ -269,10 +289,18 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         minWidth: '100vw'
       }}
     >
-      {/* Full viewport modal container with zero margins */}
+      {/* CRITICAL FIX: Full viewport modal container with absolute zero margins and proper positioning */}
       <div 
         className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative overflow-hidden"
-        style={{ margin: 0, padding: 0 }}
+        style={{ 
+          margin: 0, 
+          padding: 0,
+          position: 'relative',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}
       >
         {/* Fixed header */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-b border-white/10">
