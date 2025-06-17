@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 use anchor_spl::associated_token::AssociatedToken;
 
-// CRITICAL FIX: Use a proper program ID placeholder that will be updated after deployment
-declare_id!("11111111111111111111111111111111");
+// UPDATED: Use your deployed Program ID
+declare_id!("A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz");
 
 #[program]
 pub mod nft_swap {

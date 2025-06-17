@@ -3,37 +3,8 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 import { NftSwap } from '../types/nft_swap';
 
-// SECURITY FIX: Get Program ID from environment variables with network-specific fallbacks
-const getNetworkSpecificProgramId = () => {
-  const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
-  
-  // Try environment variable first
-  const envProgramId = import.meta.env.VITE_PROGRAM_ID;
-  if (envProgramId && envProgramId !== 'your_deployed_program_id_here') {
-    return envProgramId;
-  }
-  
-  // Network-specific fallbacks (these should be different for each network)
-  const networkProgramIds = {
-    'devnet': 'DEVNET_PROGRAM_ID_PLACEHOLDER',
-    'mainnet-beta': 'MAINNET_PROGRAM_ID_PLACEHOLDER',
-    'localnet': 'LOCALNET_PROGRAM_ID_PLACEHOLDER'
-  };
-  
-  const programId = networkProgramIds[network as keyof typeof networkProgramIds];
-  
-  if (!programId || programId.includes('PLACEHOLDER')) {
-    console.warn(`⚠️ No valid Program ID found for network: ${network}`);
-    console.warn('Please set VITE_PROGRAM_ID in your .env file');
-    // Return a default that will fail gracefully
-    return 'B4eBSHpFutVS5L2YtcwqvLKuEsENVQn5TH2uL6wwnt37';
-  }
-  
-  return programId;
-};
-
-// SECURITY FIX: Dynamic Program ID based on environment
-export let PROGRAM_ID = new PublicKey(getNetworkSpecificProgramId());
+// UPDATED: Use your new deployed Program ID
+export let PROGRAM_ID = new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz');
 
 // Function to update program ID (called from admin deployment)
 export const updateProgramId = (newProgramId: string) => {
@@ -55,7 +26,7 @@ export const updateProgramId = (newProgramId: string) => {
 const loadStoredProgramId = () => {
   try {
     const storedId = localStorage.getItem('swapper_program_id');
-    if (storedId && storedId !== getNetworkSpecificProgramId()) {
+    if (storedId && storedId !== 'A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz') {
       PROGRAM_ID = new PublicKey(storedId);
       console.log('📋 Loaded stored program ID:', storedId);
     }
@@ -137,9 +108,9 @@ export const getCurrentNetwork = () => import.meta.env.VITE_SOLANA_NETWORK || 'd
 export const validateEnvironment = () => {
   const issues = [];
   
-  const programId = import.meta.env.VITE_PROGRAM_ID;
-  if (!programId || programId === 'your_deployed_program_id_here') {
-    issues.push('VITE_PROGRAM_ID not set or using placeholder value');
+  const programId = getCurrentProgramId();
+  if (!programId || programId === '11111111111111111111111111111111') {
+    issues.push('Program ID not properly set');
   }
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;

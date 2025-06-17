@@ -3,13 +3,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-nft_swap = "11111111111111111111111111111111"
+nft_swap = "A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz"
 
 [programs.devnet]
-nft_swap = "11111111111111111111111111111111"
+nft_swap = "A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz"
 
 [programs.mainnet]
-nft_swap = "11111111111111111111111111111111"
+nft_swap = "A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz"
 
 [registry]
 url = "https://api.apr.dev"
