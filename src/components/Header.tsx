@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Zap, Menu, X } from 'lucide-react';
+import { Shield, Zap, Menu, X, Wallet } from 'lucide-react';
 import { useWallet } from '../contexts/WalletContext';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
@@ -28,80 +28,104 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
               <span className="text-xl">{platformIcon}</span>
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {platformName}
               </h1>
-              <p className="text-xs text-gray-400">{platformDescription}</p>
+              <p className="text-xs text-gray-400 hidden sm:block">{platformDescription}</p>
             </div>
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            <button
-              onClick={() => onViewChange('swap')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                currentView === 'swap'
-                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              Swap NFTs
-            </button>
-
-            {isAdmin && (
+          {/* Desktop Navigation - Left Aligned */}
+          <div className="hidden md:flex items-center space-x-8">
+            <nav className="flex items-center space-x-1">
               <button
-                onClick={() => onViewChange('admin')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-                  currentView === 'admin'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                onClick={() => onViewChange('swap')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentView === 'swap'
+                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg'
                     : 'text-gray-300 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <Shield className="h-4 w-4" />
-                <span>Admin</span>
+                Swap NFTs
               </button>
-            )}
-          </nav>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+              {isAdmin && (
+                <button
+                  onClick={() => onViewChange('admin')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                    currentView === 'admin'
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Shield className="h-4 w-4" />
+                  <span>Admin</span>
+                </button>
+              )}
+            </nav>
+
+            {/* Desktop Right Side */}
+            <div className="flex items-center space-x-4">
+              {/* Network Indicator */}
+              <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg text-sm font-medium ${
+                network === 'devnet'
+                  ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-200'
+                  : 'bg-green-500/10 border border-green-500/20 text-green-200'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+                }`}></div>
+                <span>{network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}</span>
+              </div>
+
+              {isConnected && address && (
+                <div className="text-right">
+                  <div className="text-sm font-medium text-white">
+                    {balance.toFixed(4)} SOL
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {formatAddress(address)}
+                  </div>
+                </div>
+              )}
+              
+              <div className="wallet-adapter-button-trigger">
+                <WalletMultiButton />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Right Side - Wallet and Menu */}
+          <div className="md:hidden flex items-center space-x-3">
+            {/* Mobile Wallet Info */}
+            {isConnected && address ? (
+              <div className="flex items-center space-x-2 bg-white/5 rounded-lg px-3 py-2">
+                <div className="text-right">
+                  <div className="text-xs font-medium text-white">
+                    {balance.toFixed(2)} SOL
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {formatAddress(address)}
+                  </div>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${
+                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+                }`}></div>
+              </div>
+            ) : (
+              <div className="wallet-adapter-button-trigger">
+                <WalletMultiButton />
+              </div>
+            )}
+
+            {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-gray-300 hover:text-white transition-colors"
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
-          </div>
-
-          {/* Desktop Right Side */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Network Indicator */}
-            <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg text-sm font-medium ${
-              network === 'devnet'
-                ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-200'
-                : 'bg-green-500/10 border border-green-500/20 text-green-200'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-              }`}></div>
-              <span>{network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}</span>
-            </div>
-
-            {isConnected && address && (
-              <div className="text-right">
-                <div className="text-sm font-medium text-white">
-                  {balance.toFixed(4)} SOL
-                </div>
-                <div className="text-xs text-gray-400">
-                  {formatAddress(address)}
-                </div>
-              </div>
-            )}
-            
-            <div className="wallet-adapter-button-trigger">
-              <WalletMultiButton />
-            </div>
           </div>
         </div>
 
@@ -155,22 +179,31 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 <span>{network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}</span>
               </div>
 
-              {/* Mobile Wallet Info */}
+              {/* Mobile Wallet Button (if not connected) */}
+              {!isConnected && (
+                <div className="wallet-adapter-button-trigger">
+                  <WalletMultiButton />
+                </div>
+              )}
+
+              {/* Mobile Wallet Details (if connected) */}
               {isConnected && address && (
                 <div className="bg-white/5 rounded-lg p-3">
-                  <div className="text-sm font-medium text-white mb-1">
-                    {balance.toFixed(4)} SOL
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatAddress(address)}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-white mb-1">
+                        {balance.toFixed(4)} SOL
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {formatAddress(address)}
+                      </div>
+                    </div>
+                    <div className="wallet-adapter-button-trigger">
+                      <WalletMultiButton />
+                    </div>
                   </div>
                 </div>
               )}
-              
-              {/* Mobile Wallet Button */}
-              <div className="wallet-adapter-button-trigger">
-                <WalletMultiButton />
-              </div>
             </div>
           </div>
         )}
