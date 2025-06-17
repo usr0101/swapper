@@ -1,39 +1,12 @@
 import { supabase, createPool, getAllPools as getPoolsFromDB, getPool as getPoolFromDB, updatePoolStats as updatePoolStatsDB, togglePoolStatus, deletePool as deletePoolFromDB, storePoolWallet, getPoolWalletData as getPoolWalletFromDB, PoolConfig } from './supabase';
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
-import { updateHeliusConnection } from './helius-api';
+import { heliusConnection } from './helius-api';
 
 class PoolManager {
-  private connection: Connection | null = null;
-  private connectionError: string | null = null;
+  private connection: Connection;
 
   constructor() {
-    this.initializeConnection();
-  }
-
-  private async initializeConnection() {
-    try {
-      this.connection = await updateHeliusConnection();
-      this.connectionError = null;
-      console.log('✅ Helius connection initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize Helius connection:', error);
-      this.connectionError = error instanceof Error ? error.message : 'Failed to connect to Helius API';
-      this.connection = null;
-    }
-  }
-
-  // Get connection status
-  getConnectionStatus(): { connected: boolean; error: string | null } {
-    return {
-      connected: this.connection !== null,
-      error: this.connectionError
-    };
-  }
-
-  // Retry connection
-  async retryConnection(): Promise<boolean> {
-    await this.initializeConnection();
-    return this.connection !== null;
+    this.connection = heliusConnection;
   }
 
   // Generate a REAL Solana wallet address for the pool
@@ -68,11 +41,6 @@ class PoolManager {
     poolWalletData?: any
   ): Promise<PoolConfig> {
     try {
-      // Check connection status
-      if (!this.connection) {
-        throw new Error(`Cannot create pool: ${this.connectionError || 'No connection to Helius API'}`);
-      }
-
       // Check if pool already exists
       const existingPool = await getPoolFromDB(collectionId);
       if (existingPool) {
@@ -180,11 +148,6 @@ class PoolManager {
   // Update pool NFT count specifically
   async updatePoolNFTCount(collectionId: string): Promise<number> {
     try {
-      if (!this.connection) {
-        console.warn(`Cannot update NFT count for ${collectionId}: No connection to Helius API`);
-        return 0;
-      }
-
       const { getPoolNFTs } = await import('./solana');
       
       console.log(`Fetching real NFT count for pool: ${collectionId}`);
@@ -204,11 +167,6 @@ class PoolManager {
   // Refresh all pool NFT counts
   async refreshAllPoolCounts(): Promise<void> {
     console.log('Refreshing NFT counts for all pools...');
-    
-    if (!this.connection) {
-      console.warn('Cannot refresh pool counts: No connection to Helius API');
-      return;
-    }
     
     const pools = await this.getAllPools();
     const updatePromises = pools.map(pool => 
@@ -291,10 +249,6 @@ class PoolManager {
         return false;
       }
       
-      if (!this.connection) {
-        throw new Error(`Cannot validate collection: ${this.connectionError || 'No connection to Helius API'}`);
-      }
-      
       const pubkey = new PublicKey(collectionAddress);
       const accountInfo = await this.connection.getAccountInfo(pubkey);
       return accountInfo !== null;
@@ -307,10 +261,6 @@ class PoolManager {
   // Get collection metadata from blockchain
   async getCollectionMetadata(collectionAddress: string): Promise<any> {
     try {
-      if (!this.connection) {
-        console.warn('Cannot fetch collection metadata: No connection to Helius API');
-      }
-      
       return {
         name: 'Unknown Collection',
         symbol: 'UNK',
@@ -402,7 +352,3 @@ export const importPoolWallet = (poolAddress: string, walletData: string) =>
   poolManager.importPoolWallet(poolAddress, walletData);
 export const updatePoolNFTCount = (collectionId: string) => poolManager.updatePoolNFTCount(collectionId);
 export const refreshAllPoolCounts = () => poolManager.refreshAllPoolCounts();
-
-// Export connection status functions
-export const getConnectionStatus = () => poolManager.getConnectionStatus();
-export const retryConnection = () => poolManager.retryConnection();
