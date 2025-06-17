@@ -1,12 +1,12 @@
 import { supabase, createPool, getAllPools as getPoolsFromDB, getPool as getPoolFromDB, updatePoolStats as updatePoolStatsDB, togglePoolStatus, deletePool as deletePoolFromDB, storePoolWallet, getPoolWalletData as getPoolWalletFromDB, PoolConfig } from './supabase';
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
-import { heliusConnection } from './helius-api';
+import { connection } from './solana';
 
 class PoolManager {
   private connection: Connection;
 
   constructor() {
-    this.connection = heliusConnection;
+    this.connection = connection;
   }
 
   // Generate a REAL Solana wallet address for the pool
