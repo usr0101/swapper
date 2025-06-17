@@ -26,7 +26,7 @@ interface PoolConfig {
 }
 
 export const SwapInterface: React.FC = () => {
-  const { isConnected, platformActive, maintenanceMessage, address, isAdmin } = useWallet();
+  const { isConnected, platformActive, maintenanceMessage, address, isAdmin, network, switchNetwork, forceCleanup: contextForceCleanup, platformName, platformDescription, platformIcon, updatePlatformBranding } = useWallet();
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPoolNFT, setSelectedPoolNFT] = useState<any>(null);
@@ -38,6 +38,21 @@ export const SwapInterface: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [collectionStats, setCollectionStats] = useState<any>(null);
   const [availablePools, setAvailablePools] = useState<PoolConfig[]>([]);
+
+  // CRITICAL FIX: Listen for home navigation events from header
+  useEffect(() => {
+    const handleHomeNavigation = () => {
+      console.log('🏠 Home navigation triggered from header');
+      handleBackToCollections();
+    };
+
+    // Listen for custom navigation event
+    window.addEventListener('navigateHome', handleHomeNavigation);
+
+    return () => {
+      window.removeEventListener('navigateHome', handleHomeNavigation);
+    };
+  }, []);
 
   // Load available pools
   useEffect(() => {
@@ -249,6 +264,7 @@ export const SwapInterface: React.FC = () => {
   };
 
   const handleBackToCollections = () => {
+    console.log('🔙 Navigating back to collections view');
     setSelectedCollection('');
     setSelectedPoolNFT(null);
     setSelectedUserNFT(null);

@@ -16,10 +16,16 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
   };
 
-  // Handle platform name click to go home
+  // CRITICAL FIX: Handle platform name click to go home and dispatch event
   const handlePlatformClick = () => {
+    console.log('🏠 Platform name clicked - navigating to home');
+    
+    // Always go to swap view first
     onViewChange('swap');
     setMobileMenuOpen(false); // Close mobile menu if open
+    
+    // CRITICAL: Dispatch custom event for SwapInterface to listen to
+    window.dispatchEvent(new CustomEvent('navigateHome'));
   };
 
   return (
