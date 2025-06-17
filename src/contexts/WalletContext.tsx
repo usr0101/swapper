@@ -6,7 +6,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { getUserBalance } from '../lib/solana';
-import { getAdminSettings, getApiConfig, migrateFromLocalStorage, cleanupLocalStorage, forceCleanup } from '../lib/supabase';
+import { getAdminSettings, getApiConfig, migrateFromLocalStorage, cleanupLocalStorage, forceCleanup, getGlobalPlatformBranding } from '../lib/supabase';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -61,6 +61,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [platformName, setPlatformName] = useState('Swapper');
   const [platformDescription, setPlatformDescription] = useState('Real NFT Exchange');
   const [platformIcon, setPlatformIcon] = useState('⚡');
+  const [globalBrandingLoaded, setGlobalBrandingLoaded] = useState(false);
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
@@ -71,6 +72,43 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     cleanupLocalStorage();
   }, []);
 
+  // CRITICAL FIX: Load global platform branding on app start (regardless of wallet connection)
+  useEffect(() => {
+    const loadGlobalBranding = async () => {
+      if (globalBrandingLoaded) return;
+      
+      try {
+        console.log('🌍 Loading global platform branding...');
+        const branding = await getGlobalPlatformBranding();
+        
+        if (branding) {
+          console.log('✅ Global platform branding loaded:', branding);
+          setPlatformName(branding.platform_name);
+          setPlatformDescription(branding.platform_description);
+          setPlatformIcon(branding.platform_icon);
+          
+          // Also update other platform settings if available
+          if (branding.platform_active !== undefined) {
+            setPlatformActiveState(branding.platform_active);
+          }
+          if (branding.maintenance_message) {
+            setMaintenanceMessage(branding.maintenance_message);
+          }
+          if (branding.network) {
+            setNetwork(branding.network);
+          }
+        } else {
+          console.log('⚠️ No global platform branding found, using defaults');
+        }
+      } catch (error) {
+        console.error('❌ Error loading global platform branding:', error);
+      } finally {
+        setGlobalBrandingLoaded(true);
+      }
+    };
+
+    loadGlobalBranding();
+  }, [globalBrandingLoaded]);
   // Auto-reconnect wallet on page reload
   useEffect(() => {
     const handleAutoConnect = async () => {
