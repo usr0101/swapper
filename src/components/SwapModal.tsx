@@ -315,12 +315,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                 <span className="text-gray-400">Account Creation Buffer</span>
                 <span className="text-white font-medium">{accountCreationBuffer} SOL</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Transaction Type</span>
-                <span className={`text-sm font-medium ${hasPoolAccess ? 'text-green-400' : 'text-red-400'}`}>
-                  {hasPoolAccess ? 'Swap' : 'Not Available'}
-                </span>
-              </div>
               <div className="border-t border-white/10 pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-white font-medium">Total Cost (Max)</span>
