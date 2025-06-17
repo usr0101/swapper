@@ -39,11 +39,18 @@ const getCurrentNetwork = async (userWallet?: string): Promise<'devnet' | 'mainn
   return 'devnet';
 };
 
-// Dynamic Helius RPC URL that updates based on current network
+// FIXED: Build RPC URL from separate API key and network
+const buildHeliusRpcUrl = (apiKey: string, network: string) => {
+  const heliusNetwork = network === 'mainnet-beta' ? 'mainnet' : 'devnet';
+  return `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
+};
+
+// Dynamic Helius RPC URL that updates based on current network and API key
 const getHeliusRpcUrl = async (userWallet?: string) => {
   const config = await getHeliusConfig(userWallet);
-  const network = config.network === 'mainnet-beta' ? 'mainnet' : 'devnet';
-  return `https://${network}.helius-rpc.com/?api-key=${config.apiKey}`;
+  
+  // CRITICAL FIX: Always build from API key and network to ensure consistency
+  return buildHeliusRpcUrl(config.apiKey, config.network);
 };
 
 // Enhanced connection with dynamic Helius endpoint
@@ -501,3 +508,6 @@ export const validateCollection = async (address: string, userWallet?: string) =
     return false;
   }
 };
+
+// ADDED: Export the build function for use in admin dashboard
+export { buildHeliusRpcUrl };
