@@ -1,3 +1,6 @@
+import { Connection } from '@solana/web3.js';
+import { getApiConfig } from './supabase';
+
 // Dynamic Helius API configuration that updates based on network
 const getHeliusConfig = async (userWallet?: string) => {
   try {
