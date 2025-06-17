@@ -20,26 +20,25 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
     <header className="border-b border-white/10 backdrop-blur-xl bg-white/5">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo and Title */}
-          <button
-            onClick={() => onViewChange('swap')}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
-              <span className="text-xl">{platformIcon}</span>
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                {platformName}
-              </h1>
-              {/* FIXED: Show platform description on mobile too */}
-              <p className="text-xs text-gray-400">{platformDescription}</p>
-            </div>
-          </button>
+          {/* Logo and Title - Left Aligned */}
+          <div className="flex items-center space-x-8">
+            <button
+              onClick={() => onViewChange('swap')}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <span className="text-xl">{platformIcon}</span>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                  {platformName}
+                </h1>
+                <p className="text-xs text-gray-400">{platformDescription}</p>
+              </div>
+            </button>
 
-          {/* Desktop Navigation - Left Aligned */}
-          <div className="hidden md:flex items-center space-x-8">
-            <nav className="flex items-center space-x-1">
+            {/* Desktop Navigation - Next to Logo */}
+            <nav className="hidden md:flex items-center space-x-1">
               <button
                 onClick={() => onViewChange('swap')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -65,20 +64,23 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 </button>
               )}
             </nav>
+          </div>
 
-            {/* Desktop Right Side */}
-            <div className="flex items-center space-x-4">
-              {/* FIXED: Network Indicator with dot like mobile */}
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-                }`}></div>
-                <span className="text-sm font-medium text-gray-300">
-                  {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
-                </span>
-              </div>
+          {/* Desktop Right Side - Like Mobile */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Network Indicator with dot like mobile */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+              }`}></div>
+              <span className="text-sm font-medium text-gray-300">
+                {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
+              </span>
+            </div>
 
-              {isConnected && address && (
+            {/* Wallet Info and Button */}
+            {isConnected && address ? (
+              <div className="flex items-center space-x-3">
                 <div className="text-right">
                   <div className="text-sm font-medium text-white">
                     {balance.toFixed(4)} SOL
@@ -87,12 +89,15 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                     {formatAddress(address)}
                   </div>
                 </div>
-              )}
-              
+                <div className="wallet-adapter-button-trigger">
+                  <WalletMultiButton />
+                </div>
+              </div>
+            ) : (
               <div className="wallet-adapter-button-trigger">
                 <WalletMultiButton />
               </div>
-            </div>
+            )}
           </div>
 
           {/* Mobile Right Side - Wallet and Menu */}
