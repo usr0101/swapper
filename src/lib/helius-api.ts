@@ -1,6 +1,3 @@
-import { Connection, PublicKey } from '@solana/web3.js';
-import { getApiConfig } from './supabase';
-
 // Dynamic Helius API configuration that updates based on network
 const getHeliusConfig = async (userWallet?: string) => {
   try {
@@ -475,7 +472,7 @@ export const searchNFTByMint = async (mintAddress: string, userWallet?: string) 
   }
 };
 
-// Get current network info for display
+// FIXED: Get current network info for display with correct explorer URL format
 export const getCurrentNetworkInfo = async (userWallet?: string) => {
   const config = await getHeliusConfig(userWallet);
   const network = await getCurrentNetwork(userWallet);
@@ -484,9 +481,10 @@ export const getCurrentNetworkInfo = async (userWallet?: string) => {
     network,
     rpcUrl: await getHeliusRpcUrl(userWallet),
     apiKey: config.apiKey,
+    // CRITICAL FIX: Correct Solana Explorer URL format
     explorerUrl: network === 'devnet' 
-      ? 'https://explorer.solana.com/?cluster=devnet'
-      : 'https://explorer.solana.com/',
+      ? 'https://explorer.solana.com'
+      : 'https://explorer.solana.com',
   };
 };
 

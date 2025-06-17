@@ -431,7 +431,10 @@ export const executeSwapTransaction = async (
     );
     
     console.log('🚀 ATOMIC transaction sent with signature:', signature);
-    console.log('🔗 Explorer URL:', `${networkInfo.explorerUrl}/tx/${signature}`);
+    
+    // FIXED: Correct explorer URL format
+    const explorerUrl = `${networkInfo.explorerUrl}/tx/${signature}?cluster=${networkInfo.network}`;
+    console.log('🔗 Explorer URL:', explorerUrl);
     
     // STEP 10: Wait for finalized confirmation
     console.log('⏳ STEP 10: Waiting for ATOMIC transaction confirmation...');
@@ -462,7 +465,7 @@ export const executeSwapTransaction = async (
     return {
       success: true,
       signature,
-      explorerUrl: `${networkInfo.explorerUrl}/tx/${signature}`,
+      explorerUrl,
       type: 'atomic_nft_swap',
       timestamp: new Date().toISOString(),
       fee: pool.swap_fee,
@@ -533,9 +536,10 @@ export const shortenAddress = (address: string, chars = 4) => {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;
 };
 
+// FIXED: Get explorer URL with correct format
 export const getExplorerUrl = async (signature: string, userWallet?: string) => {
   const networkInfo = await getCurrentNetworkInfo(userWallet);
-  return `${networkInfo.explorerUrl}/tx/${signature}`;
+  return `${networkInfo.explorerUrl}/tx/${signature}?cluster=${networkInfo.network}`;
 };
 
 // Validate if wallet has sufficient SOL for transaction
@@ -669,7 +673,7 @@ export const verifyTransaction = async (signature: string, userWallet?: string) 
       blockTime: txDetails.blockTime,
       slot: txDetails.slot,
       fee: txDetails.meta?.fee,
-      explorerUrl: `${networkInfo.explorerUrl}/tx/${signature}`,
+      explorerUrl: `${networkInfo.explorerUrl}/tx/${signature}?cluster=${networkInfo.network}`,
       details: txDetails,
     };
     
