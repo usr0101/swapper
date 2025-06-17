@@ -60,11 +60,19 @@ class PoolManager {
           hasPrivateKey: true,
         };
       } else if (poolWalletData) {
+        // CRITICAL FIX: Ensure the wallet data structure is correct
         finalPoolWalletData = {
-          publicKey: poolWalletData.publicKey,
-          secretKey: poolWalletData.secretKey,
-          hasPrivateKey: true,
+          publicKey: poolWalletData.publicKey || poolAddress,
+          secretKey: poolWalletData.secretKey || '',
+          hasPrivateKey: !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''),
         };
+        
+        console.log('🔐 Pool wallet data prepared:', {
+          publicKey: finalPoolWalletData.publicKey,
+          hasSecretKey: !!(finalPoolWalletData.secretKey && finalPoolWalletData.secretKey.trim() !== ''),
+          hasPrivateKey: finalPoolWalletData.hasPrivateKey,
+          secretKeyLength: finalPoolWalletData.secretKey ? finalPoolWalletData.secretKey.length : 0,
+        });
       } else {
         finalPoolWalletData = {
           publicKey: finalPoolAddress,
@@ -74,6 +82,7 @@ class PoolManager {
       }
 
       console.log('Creating pool with address:', finalPoolAddress);
+      console.log('Pool will have swap capability:', finalPoolWalletData?.hasPrivateKey);
 
       // Create pool in database (REMOVED collection_symbol)
       const poolConfig = await createPool({
@@ -91,10 +100,18 @@ class PoolManager {
         description: description || `Swap pool for ${collectionName} NFTs`,
       });
 
-      // Store wallet data securely if we have private key
-      if (finalPoolWalletData?.hasPrivateKey && finalPoolWalletData.secretKey) {
-        await storePoolWallet(finalPoolAddress, finalPoolWalletData);
-      }
+      // CRITICAL FIX: Always store wallet data, even if no private key
+      console.log('💾 Storing pool wallet data...');
+      await storePoolWallet(finalPoolAddress, finalPoolWalletData);
+      
+      // Verify the wallet data was stored correctly
+      const storedWalletData = await getPoolWalletFromDB(finalPoolAddress);
+      console.log('✅ Wallet data verification:', {
+        stored: !!storedWalletData,
+        hasSecretKey: !!(storedWalletData?.secretKey && storedWalletData.secretKey.trim() !== ''),
+        hasPrivateKey: storedWalletData?.hasPrivateKey,
+        publicKeyMatches: storedWalletData?.publicKey === finalPoolAddress,
+      });
 
       console.log('Pool created successfully:', poolConfig);
       return poolConfig;
@@ -202,9 +219,26 @@ class PoolManager {
     };
   }
 
-  // Get pool wallet data
+  // ENHANCED: Get pool wallet data with better debugging
   async getPoolWalletData(poolAddress: string): Promise<any> {
-    return await getPoolWalletFromDB(poolAddress);
+    console.log('🔍 Retrieving wallet data for pool:', poolAddress);
+    
+    try {
+      const walletData = await getPoolWalletFromDB(poolAddress);
+      
+      console.log('🔍 Wallet data retrieval results:', {
+        found: !!walletData,
+        hasSecretKey: !!(walletData?.secretKey && walletData.secretKey.trim() !== ''),
+        hasPrivateKey: walletData?.hasPrivateKey,
+        publicKeyMatches: walletData?.publicKey === poolAddress,
+        secretKeyLength: walletData?.secretKey ? walletData.secretKey.length : 0,
+      });
+      
+      return walletData;
+    } catch (error) {
+      console.error('❌ Error retrieving wallet data:', error);
+      return null;
+    }
   }
 
   // Validate collection address
