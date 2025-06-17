@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC = () => {
   const [cleaning, setCleaning] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Admin settings state
+  // Admin settings state - CRITICAL FIX: Initialize with current context values
   const [adminSettings, setAdminSettings] = useState({
     feeCollectorWallet: address || '',
     defaultSwapFee: '0.05',
@@ -87,16 +87,18 @@ export const AdminDashboard: React.FC = () => {
     totalVolume: 0,
   });
 
-  // CRITICAL FIX: Update admin settings when context values change
+  // CRITICAL FIX: Sync admin settings with context values when they change
   useEffect(() => {
+    console.log('🔄 Context values changed, updating admin settings form...');
     setAdminSettings(prev => ({
       ...prev,
       platformName: platformName,
       platformDescription: platformDescription,
       platformIcon: platformIcon,
       network: network,
+      feeCollectorWallet: address || prev.feeCollectorWallet,
     }));
-  }, [platformName, platformDescription, platformIcon, network]);
+  }, [platformName, platformDescription, platformIcon, network, address]);
 
   // Load data on component mount
   useEffect(() => {
@@ -129,6 +131,8 @@ export const AdminDashboard: React.FC = () => {
       const settings = await getAdminSettings(address);
       if (settings) {
         console.log('✅ Admin settings loaded:', settings);
+        
+        // CRITICAL FIX: Update form state with loaded settings
         setAdminSettings({
           feeCollectorWallet: settings.fee_collector_wallet,
           defaultSwapFee: settings.default_swap_fee.toString(),
@@ -140,6 +144,18 @@ export const AdminDashboard: React.FC = () => {
           platformDescription: settings.platform_description || platformDescription,
           platformIcon: settings.platform_icon || platformIcon,
         });
+
+        // CRITICAL FIX: Apply platform branding to context if different
+        if (settings.platform_name !== platformName || 
+            settings.platform_description !== platformDescription || 
+            settings.platform_icon !== platformIcon) {
+          console.log('🎨 Applying loaded platform branding to context...');
+          updatePlatformBranding(
+            settings.platform_name || platformName,
+            settings.platform_description || platformDescription,
+            settings.platform_icon || platformIcon
+          );
+        }
       } else {
         console.log('⚠️ No admin settings found, using defaults');
       }
@@ -191,8 +207,8 @@ export const AdminDashboard: React.FC = () => {
       });
 
       // CRITICAL FIX: Update platform branding in context immediately after saving
-      console.log('🎨 Updating platform branding in context...');
-      await updatePlatformBranding(adminSettings.platformName, adminSettings.platformDescription, adminSettings.platformIcon);
+      console.log('🎨 Updating platform branding in context after save...');
+      updatePlatformBranding(adminSettings.platformName, adminSettings.platformDescription, adminSettings.platformIcon);
 
       // Update network if changed
       if (adminSettings.network !== network) {
@@ -202,12 +218,14 @@ export const AdminDashboard: React.FC = () => {
       console.log('✅ Settings saved successfully and applied to platform');
       
       // Show success feedback
-      const originalText = document.querySelector('[data-save-button]')?.textContent;
-      const saveButton = document.querySelector('[data-save-button]');
+      const saveButton = document.querySelector('[data-save-button]') as HTMLButtonElement;
       if (saveButton) {
+        const originalText = saveButton.textContent;
         saveButton.textContent = 'Saved!';
+        saveButton.style.background = 'linear-gradient(to right, #10b981, #059669)';
         setTimeout(() => {
           saveButton.textContent = originalText || 'Save Settings';
+          saveButton.style.background = '';
         }, 2000);
       }
 
