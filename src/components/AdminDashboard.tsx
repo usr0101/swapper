@@ -76,11 +76,13 @@ export const AdminDashboard: React.FC = () => {
   // API config state
   const [apiConfig, setApiConfig] = useState({
     heliusApiKey: 'd260d547-850c-4cb6-8412-9c764f0c9df1',
-    heliusRpc: 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
+    heliusRpc: '',
     network: network,
   });
 
   const [showApiKey, setShowApiKey] = useState(false);
+  const [validatingRpc, setValidatingRpc] = useState(false);
+  const [rpcValidationResult, setRpcValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [validatingRpc, setValidatingRpc] = useState(false);
   const [rpcValidationResult, setRpcValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [poolStats, setPoolStats] = useState({
@@ -101,7 +103,29 @@ export const AdminDashboard: React.FC = () => {
       network: network,
       feeCollectorWallet: address || prev.feeCollectorWallet,
     }));
+    
+    // Auto-update RPC URL when network changes
+    updateRpcUrl(apiConfig.heliusApiKey, network);
   }, [platformName, platformDescription, platformIcon, network, address]);
+
+  // Auto-update RPC URL when API key changes
+  useEffect(() => {
+    updateRpcUrl(apiConfig.heliusApiKey, apiConfig.network);
+  }, [apiConfig.heliusApiKey, apiConfig.network]);
+
+  const updateRpcUrl = (apiKey: string, networkType: string) => {
+    if (apiKey && apiKey.trim() !== '') {
+      const heliusNetwork = networkType === 'mainnet-beta' ? 'mainnet' : 'devnet';
+      const newRpcUrl = `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
+      
+      setApiConfig(prev => ({
+        ...prev,
+        heliusRpc: newRpcUrl
+      }));
+      
+      console.log('🔄 Auto-updated RPC URL:', newRpcUrl);
+    }
+  };
 
   // Load data on component mount
   useEffect(() => {
@@ -160,6 +184,9 @@ export const AdminDashboard: React.FC = () => {
           heliusRpc: config.helius_rpc,
           network: config.network,
         });
+      } else {
+        // Set default RPC URL if no config exists
+        updateRpcUrl(adminSettings.heliusApiKey, network);
       }
 
     } catch (error) {
@@ -355,6 +382,74 @@ export const AdminDashboard: React.FC = () => {
       await navigator.clipboard.writeText(text);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const handleValidateRpc = async () => {
+    if (!apiConfig.heliusRpc.trim()) {
+      setRpcValidationResult({ valid: false, message: 'Please enter an RPC URL' });
+      return;
+    }
+
+    setValidatingRpc(true);
+    setRpcValidationResult(null);
+
+    try {
+      console.log('🔍 Validating RPC URL:', apiConfig.heliusRpc);
+      
+      // Test the RPC with a simple getHealth call
+      const response = await fetch(apiConfig.heliusRpc, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getHealth',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message || 'RPC returned an error');
+      }
+
+      // Check if it's a Helius endpoint
+      const isHelius = apiConfig.heliusRpc.includes('helius-rpc.com');
+      const network = apiConfig.heliusRpc.includes('mainnet') ? 'mainnet' : 'devnet';
+      
+      setRpcValidationResult({ 
+        valid: true, 
+        message: `✅ RPC is working! ${isHelius ? `Helius ${network}` : 'Custom'} endpoint responding correctly.` 
+      });
+      
+      console.log('✅ RPC validation successful:', data);
+      
+    } catch (error) {
+      console.error('❌ RPC validation failed:', error);
+      
+      let errorMessage = 'RPC validation failed: ';
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage += 'Network error or invalid URL';
+      } else if (error.message.includes('HTTP 401')) {
+        errorMessage += 'Invalid API key';
+      } else if (error.message.includes('HTTP 403')) {
+        errorMessage += 'API key lacks permissions';
+      } else if (error.message.includes('HTTP 429')) {
+        errorMessage += 'Rate limit exceeded';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      setRpcValidationResult({ valid: false, message: errorMessage });
+    } finally {
+      setValidatingRpc(false);
     }
   };
 
@@ -937,7 +1032,12 @@ export const AdminDashboard: React.FC = () => {
                     <input
                       type={showApiKey ? 'text' : 'password'}
                       value={apiConfig.heliusApiKey}
-                      onChange={(e) => setApiConfig(prev => ({ ...prev, heliusApiKey: e.target.value }))}
+                      onChange={(e) => {
+                        const newApiKey = e.target.value;
+                        setApiConfig(prev => ({ ...prev, heliusApiKey: newApiKey }));
+                        // Clear validation result when API key changes
+                        setRpcValidationResult(null);
+                      }}
                       className="w-full px-4 py-2 pr-12 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                       placeholder="Your Helius API key"
                     />
@@ -949,19 +1049,55 @@ export const AdminDashboard: React.FC = () => {
                       {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Changes here will automatically update the RPC URL below
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Helius RPC URL
                   </label>
-                  <input
-                    type="text"
-                    value={apiConfig.heliusRpc}
-                    onChange={(e) => setApiConfig(prev => ({ ...prev, heliusRpc: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    placeholder="Helius RPC endpoint"
-                  />
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={apiConfig.heliusRpc}
+                      onChange={(e) => {
+                        setApiConfig(prev => ({ ...prev, heliusRpc: e.target.value }));
+                        // Clear validation result when RPC URL changes
+                        setRpcValidationResult(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      placeholder="Helius RPC endpoint"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleValidateRpc}
+                      disabled={validatingRpc || !apiConfig.heliusRpc.trim()}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+                    >
+                      {validatingRpc ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      <span>Validate</span>
+                    </button>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Auto-synced with API key above, but can be manually edited for custom endpoints
+                  </p>
+                  
+                  {/* Validation Result */}
+                  {rpcValidationResult && (
+                    <div className={`mt-2 p-2 rounded-lg text-sm ${
+                      rpcValidationResult.valid 
+                        ? 'bg-green-500/10 border border-green-500/20 text-green-200'
+                        : 'bg-red-500/10 border border-red-500/20 text-red-200'
+                    }`}>
+                      {rpcValidationResult.message}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -970,12 +1106,20 @@ export const AdminDashboard: React.FC = () => {
                   </label>
                   <select
                     value={apiConfig.network}
-                    onChange={(e) => setApiConfig(prev => ({ ...prev, network: e.target.value }))}
+                    onChange={(e) => {
+                      const newNetwork = e.target.value;
+                      setApiConfig(prev => ({ ...prev, network: newNetwork }));
+                      // Clear validation result when network changes
+                      setRpcValidationResult(null);
+                    }}
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="devnet">Devnet</option>
                     <option value="mainnet-beta">Mainnet Beta</option>
                   </select>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Changes here will automatically update the RPC URL above
+                  </p>
                 </div>
               </div>
             </div>
