@@ -6,7 +6,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { getUserBalance } from '../lib/solana';
-import { getAdminSettings, getApiConfig, migrateFromLocalStorage } from '../lib/supabase';
+import { getAdminSettings, getApiConfig, migrateFromLocalStorage, cleanupLocalStorage, forceCleanup } from '../lib/supabase';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -25,6 +25,7 @@ interface WalletContextType {
   switchNetwork: (network: 'devnet' | 'mainnet-beta') => void;
   getHeliusRpcUrl: () => string;
   getHeliusApiKey: () => string;
+  forceCleanup: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -54,6 +55,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
 
+  // ENHANCED: Immediate cleanup on component mount
+  useEffect(() => {
+    // Always clean localStorage on app start
+    cleanupLocalStorage();
+  }, []);
+
   // Load settings from Supabase when wallet connects
   useEffect(() => {
     if (connected && publicKey && !migrationCompleted) {
@@ -67,7 +74,10 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       console.log('🔄 Loading settings from Supabase...');
 
-      // First, try to migrate from localStorage if needed
+      // ENHANCED: Always clean localStorage first
+      cleanupLocalStorage();
+
+      // Try to migrate from localStorage if needed (but skip test data)
       try {
         await migrateFromLocalStorage(publicKey.toString());
         setMigrationCompleted(true);
@@ -130,6 +140,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setAdminSettings(null);
       setApiConfig(null);
       setMigrationCompleted(false);
+      
+      // Clean up on disconnect
+      cleanupLocalStorage();
     } catch (error) {
       console.error('Failed to disconnect wallet:', error);
     }
@@ -161,6 +174,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
   };
 
+  // ENHANCED: Force cleanup function for admin
+  const handleForceCleanup = async () => {
+    if (isAdmin) {
+      console.log('🧹 Admin force cleanup initiated...');
+      await forceCleanup();
+      
+      // Reload the page to ensure clean state
+      window.location.reload();
+    }
+  };
+
   return (
     <WalletContext.Provider
       value={{
@@ -178,6 +202,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         switchNetwork,
         getHeliusRpcUrl,
         getHeliusApiKey,
+        forceCleanup: handleForceCleanup,
       }}
     >
       {children}

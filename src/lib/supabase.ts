@@ -283,143 +283,245 @@ export const saveApiConfig = async (config: Omit<ApiConfig, 'id' | 'created_at' 
   return data;
 };
 
-// Clean up any remaining localStorage data
+// ENHANCED: Complete localStorage cleanup
 export const cleanupLocalStorage = () => {
-  console.log('🧹 Cleaning up any remaining localStorage data...');
+  console.log('🧹 Performing COMPLETE localStorage cleanup...');
   
-  const keysToRemove = [
+  // Get all localStorage keys
+  const allKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) allKeys.push(key);
+  }
+  
+  console.log('Found localStorage keys:', allKeys);
+  
+  // Remove ALL swapper-related keys
+  const swapperKeys = allKeys.filter(key => 
+    key.includes('swapper') || 
+    key.includes('pool') || 
+    key.includes('admin') || 
+    key.includes('api') ||
+    key.includes('wallet') ||
+    key.includes('network') ||
+    key.includes('program')
+  );
+  
+  swapperKeys.forEach(key => {
+    localStorage.removeItem(key);
+    console.log(`🗑️ Removed ${key} from localStorage`);
+  });
+  
+  // Also remove any remaining specific keys
+  const specificKeys = [
     'swapper_pools',
-    'swapper_admin_settings',
+    'swapper_admin_settings', 
     'swapper_api_config',
-    'swapper_network'
+    'swapper_network',
+    'swapper_program_id',
+    'swapper-collection.json',
+    '.swapper-wallet.json'
   ];
   
-  // Remove specific keys
-  keysToRemove.forEach(key => {
+  specificKeys.forEach(key => {
     if (localStorage.getItem(key)) {
       localStorage.removeItem(key);
-      console.log(`Removed ${key} from localStorage`);
+      console.log(`🗑️ Removed specific key: ${key}`);
     }
   });
   
-  // Remove any pool wallet keys
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('pool_wallet_')) {
-      localStorage.removeItem(key);
-      console.log(`Removed ${key} from localStorage`);
-    }
-  }
-  
-  console.log('✅ localStorage cleanup completed');
+  console.log('✅ Complete localStorage cleanup finished');
 };
 
-// Migration utilities
+// ENHANCED: Remove any default/test pools from database
+export const removeTestPools = async () => {
+  try {
+    console.log('🧹 Removing test pools from database...');
+    
+    // Remove SwapperCollection and other test pools
+    const testPoolIds = [
+      'swapper-collection',
+      'test-collection',
+      'test-collection-1',
+      'solana-monkey-business',
+      'degenerate-ape-academy',
+      'aurory',
+      'okay-bears',
+      'thugbirdz'
+    ];
+    
+    for (const poolId of testPoolIds) {
+      const { error } = await supabase
+        .from('pools')
+        .delete()
+        .eq('collection_id', poolId);
+      
+      if (error) {
+        console.log(`Pool ${poolId} not found or already deleted`);
+      } else {
+        console.log(`✅ Removed test pool: ${poolId}`);
+      }
+    }
+    
+    console.log('✅ Test pool cleanup completed');
+  } catch (error) {
+    console.error('Error removing test pools:', error);
+  }
+};
+
+// Migration utilities - ENHANCED
 export const migrateFromLocalStorage = async (userWallet: string) => {
   try {
-    console.log('🔄 Starting migration from localStorage to Supabase...');
+    console.log('🔄 Starting ENHANCED migration from localStorage to Supabase...');
 
+    // FIRST: Clean up any existing test data
+    await removeTestPools();
+    
     // Check if migration is needed
     const hasLocalData = localStorage.getItem('swapper_pools') || 
                         localStorage.getItem('swapper_admin_settings') || 
                         localStorage.getItem('swapper_api_config');
     
     if (!hasLocalData) {
-      console.log('No localStorage data found, skipping migration');
-      cleanupLocalStorage(); // Clean up any remaining data
+      console.log('No localStorage data found, performing cleanup only');
+      cleanupLocalStorage();
       return false;
     }
 
     // Migrate admin settings
     const adminSettings = localStorage.getItem('swapper_admin_settings');
     if (adminSettings) {
-      const settings = JSON.parse(adminSettings);
-      await saveAdminSettings({
-        user_wallet: userWallet,
-        fee_collector_wallet: settings.feeCollectorWallet || userWallet,
-        default_swap_fee: settings.defaultSwapFee || 0.05,
-        platform_active: settings.platformActive !== false,
-        maintenance_message: settings.maintenanceMessage || 'Platform is currently under maintenance.',
-        helius_api_key: settings.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
-        network: settings.network || 'devnet',
-      });
-      console.log('✅ Admin settings migrated');
+      try {
+        const settings = JSON.parse(adminSettings);
+        await saveAdminSettings({
+          user_wallet: userWallet,
+          fee_collector_wallet: settings.feeCollectorWallet || userWallet,
+          default_swap_fee: parseFloat(settings.defaultSwapFee) || 0.05,
+          platform_active: settings.platformActive !== false,
+          maintenance_message: settings.maintenanceMessage || 'Platform is currently under maintenance.',
+          helius_api_key: settings.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
+          network: settings.network || 'devnet',
+        });
+        console.log('✅ Admin settings migrated');
+      } catch (error) {
+        console.error('Error migrating admin settings:', error);
+      }
     }
 
     // Migrate API config
     const apiConfig = localStorage.getItem('swapper_api_config');
     if (apiConfig) {
-      const config = JSON.parse(apiConfig);
-      await saveApiConfig({
-        user_wallet: userWallet,
-        helius_api_key: config.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
-        helius_rpc: config.heliusRpc || 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
-        network: config.network || 'devnet',
-      });
-      console.log('✅ API config migrated');
+      try {
+        const config = JSON.parse(apiConfig);
+        await saveApiConfig({
+          user_wallet: userWallet,
+          helius_api_key: config.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
+          helius_rpc: config.heliusRpc || 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
+          network: config.network || 'devnet',
+        });
+        console.log('✅ API config migrated');
+      } catch (error) {
+        console.error('Error migrating API config:', error);
+      }
     }
 
-    // Migrate pools
+    // Migrate pools (but skip test pools)
     const pools = localStorage.getItem('swapper_pools');
     if (pools) {
-      const poolsData = JSON.parse(pools);
-      for (const [collectionId, pool] of Object.entries(poolsData)) {
-        const poolConfig = pool as any;
-        
-        // Check if pool already exists
-        const existingPool = await getPool(collectionId);
-        if (existingPool) {
-          console.log(`Pool ${collectionId} already exists, skipping`);
-          continue;
-        }
-        
-        await createPool({
-          collection_id: collectionId,
-          collection_name: poolConfig.collectionName,
-          collection_symbol: poolConfig.collectionSymbol,
-          collection_image: poolConfig.collectionImage,
-          collection_address: poolConfig.collectionAddress,
-          pool_address: poolConfig.poolAddress,
-          swap_fee: poolConfig.swapFee,
-          created_by: poolConfig.createdBy || userWallet,
-          is_active: poolConfig.isActive !== false,
-          nft_count: poolConfig.nftCount || 0,
-          total_volume: poolConfig.totalVolume || 0,
-          description: poolConfig.description,
-        });
+      try {
+        const poolsData = JSON.parse(pools);
+        for (const [collectionId, pool] of Object.entries(poolsData)) {
+          // Skip test pools
+          if (collectionId.includes('test') || collectionId.includes('swapper-collection')) {
+            console.log(`Skipping test pool: ${collectionId}`);
+            continue;
+          }
+          
+          const poolConfig = pool as any;
+          
+          // Check if pool already exists
+          const existingPool = await getPool(collectionId);
+          if (existingPool) {
+            console.log(`Pool ${collectionId} already exists, skipping`);
+            continue;
+          }
+          
+          await createPool({
+            collection_id: collectionId,
+            collection_name: poolConfig.collectionName,
+            collection_symbol: poolConfig.collectionSymbol,
+            collection_image: poolConfig.collectionImage,
+            collection_address: poolConfig.collectionAddress,
+            pool_address: poolConfig.poolAddress,
+            swap_fee: poolConfig.swapFee,
+            created_by: poolConfig.createdBy || userWallet,
+            is_active: poolConfig.isActive !== false,
+            nft_count: poolConfig.nftCount || 0,
+            total_volume: poolConfig.totalVolume || 0,
+            description: poolConfig.description,
+          });
 
-        // Migrate pool wallet data if exists
-        if (poolConfig.poolWalletData) {
-          await storePoolWallet(poolConfig.poolAddress, poolConfig.poolWalletData);
+          // Migrate pool wallet data if exists
+          if (poolConfig.poolWalletData) {
+            await storePoolWallet(poolConfig.poolAddress, poolConfig.poolWalletData);
+          }
         }
+        console.log('✅ Pools migrated (test pools skipped)');
+      } catch (error) {
+        console.error('Error migrating pools:', error);
       }
-      console.log('✅ Pools migrated');
     }
 
-    // Migrate individual pool wallet data
+    // Migrate individual pool wallet data (skip test pools)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith('pool_wallet_')) {
         const poolAddress = key.replace('pool_wallet_', '');
+        
+        // Skip if it looks like a test pool address
+        if (poolAddress.includes('test') || poolAddress.includes('SwapPool')) {
+          console.log(`Skipping test pool wallet: ${poolAddress}`);
+          continue;
+        }
+        
         const walletData = localStorage.getItem(key);
         if (walletData) {
-          const data = JSON.parse(walletData);
-          await storePoolWallet(poolAddress, {
-            publicKey: data.publicKey,
-            secretKey: data.secretKey,
-            hasPrivateKey: true,
-          });
+          try {
+            const data = JSON.parse(walletData);
+            await storePoolWallet(poolAddress, {
+              publicKey: data.publicKey,
+              secretKey: data.secretKey,
+              hasPrivateKey: true,
+            });
+          } catch (error) {
+            console.error(`Error migrating wallet data for ${poolAddress}:`, error);
+          }
         }
       }
     }
 
-    // Clean up localStorage after successful migration
+    // FINAL: Complete cleanup after migration
     cleanupLocalStorage();
 
-    console.log('🎉 Migration completed successfully!');
+    console.log('🎉 Enhanced migration completed successfully!');
     return true;
   } catch (error) {
     console.error('❌ Migration failed:', error);
+    // Still clean up localStorage even if migration fails
+    cleanupLocalStorage();
     throw error;
   }
+};
+
+// Force cleanup function for admin use
+export const forceCleanup = async () => {
+  console.log('🧹 FORCE CLEANUP: Removing all test data...');
+  
+  // Clean localStorage
+  cleanupLocalStorage();
+  
+  // Clean database test pools
+  await removeTestPools();
+  
+  console.log('✅ Force cleanup completed');
 };

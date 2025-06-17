@@ -19,7 +19,8 @@ import {
   Key,
   Database,
   Network,
-  DollarSign
+  DollarSign,
+  Trash
 } from 'lucide-react';
 import { CreatePoolModal } from './CreatePoolModal';
 import { EditPoolModal } from './EditPoolModal';
@@ -34,12 +35,13 @@ import {
   togglePoolStatus, 
   deletePool,
   cleanupLocalStorage,
+  forceCleanup,
   PoolConfig 
 } from '../lib/supabase';
 import { updateProgramId, getCurrentProgramId } from '../lib/anchor';
 
 export const AdminDashboard: React.FC = () => {
-  const { address, isAdmin, network, switchNetwork } = useWallet();
+  const { address, isAdmin, network, switchNetwork, forceCleanup: contextForceCleanup } = useWallet();
   const [activeTab, setActiveTab] = useState<'overview' | 'pools' | 'settings' | 'deploy'>('overview');
   const [showCreatePool, setShowCreatePool] = useState(false);
   const [showEditPool, setShowEditPool] = useState(false);
@@ -48,6 +50,7 @@ export const AdminDashboard: React.FC = () => {
   const [pools, setPools] = useState<PoolConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
 
   // Admin settings state
   const [adminSettings, setAdminSettings] = useState({
@@ -78,7 +81,6 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     if (isAdmin && address) {
       loadAdminData();
-      cleanupLocalStorage(); // Clean up any remaining localStorage data
     }
   }, [isAdmin, address]);
 
@@ -220,6 +222,23 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // ENHANCED: Force cleanup handler
+  const handleForceCleanup = async () => {
+    if (!confirm('This will remove ALL test data and localStorage. Are you sure?')) {
+      return;
+    }
+
+    setCleaning(true);
+    try {
+      await contextForceCleanup();
+      console.log('✅ Force cleanup completed');
+    } catch (error) {
+      console.error('Error during force cleanup:', error);
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="text-center py-16">
@@ -256,6 +275,15 @@ export const AdminDashboard: React.FC = () => {
           <p className="text-gray-400 mt-1">Manage your NFT swap platform</p>
         </div>
         <div className="flex items-center space-x-4">
+          {/* ENHANCED: Force cleanup button */}
+          <button
+            onClick={handleForceCleanup}
+            disabled={cleaning}
+            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+          >
+            <Trash className="h-4 w-4" />
+            <span>{cleaning ? 'Cleaning...' : 'Force Cleanup'}</span>
+          </button>
           <button
             onClick={() => setShowProgramDeploy(true)}
             className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
@@ -301,6 +329,20 @@ export const AdminDashboard: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
+          {/* ENHANCED: Cleanup notice */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div className="text-sm">
+                <p className="text-blue-200 font-medium mb-1">✅ Platform Migrated to Supabase</p>
+                <p className="text-blue-100/80">
+                  All data is now stored securely in Supabase. LocalStorage has been cleaned up. 
+                  Use "Force Cleanup" if you see any remaining test data.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-6">
@@ -356,34 +398,42 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
             <div className="space-y-4">
-              {pools.slice(0, 5).map((pool) => (
-                <div key={pool.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={pool.collection_image}
-                      alt={pool.collection_name}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div>
-                      <h4 className="font-medium text-white">{pool.collection_name}</h4>
-                      <p className="text-sm text-gray-400">{pool.collection_id}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">NFTs: {pool.nft_count}</p>
-                      <p className="text-sm text-gray-400">Fee: {pool.swap_fee} SOL</p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      pool.is_active 
-                        ? 'bg-green-500/20 text-green-200' 
-                        : 'bg-red-500/20 text-red-200'
-                    }`}>
-                      {pool.is_active ? 'Active' : 'Inactive'}
-                    </div>
-                  </div>
+              {pools.length === 0 ? (
+                <div className="text-center py-8">
+                  <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-400 mb-2">No pools created yet</p>
+                  <p className="text-gray-500 text-sm">Create your first pool to get started</p>
                 </div>
-              ))}
+              ) : (
+                pools.slice(0, 5).map((pool) => (
+                  <div key={pool.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <img
+                        src={pool.collection_image}
+                        alt={pool.collection_name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h4 className="font-medium text-white">{pool.collection_name}</h4>
+                        <p className="text-sm text-gray-400">{pool.collection_id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">NFTs: {pool.nft_count}</p>
+                        <p className="text-sm text-gray-400">Fee: {pool.swap_fee} SOL</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        pool.is_active 
+                          ? 'bg-green-500/20 text-green-200' 
+                          : 'bg-red-500/20 text-red-200'
+                      }`}>
+                        {pool.is_active ? 'Active' : 'Inactive'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -403,73 +453,87 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="grid gap-6">
-            {pools.map((pool) => (
-              <div key={pool.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={pool.collection_image}
-                      alt={pool.collection_name}
-                      className="w-16 h-16 rounded-lg object-cover"
-                    />
-                    <div>
-                      <h4 className="text-lg font-semibold text-white">{pool.collection_name}</h4>
-                      <p className="text-gray-400">{pool.collection_id}</p>
-                      <p className="text-sm text-gray-500">
-                        Pool: {pool.pool_address.slice(0, 8)}...{pool.pool_address.slice(-8)}
-                      </p>
+            {pools.length === 0 ? (
+              <div className="text-center py-16">
+                <Database className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Pools Yet</h3>
+                <p className="text-gray-400 mb-6">Create your first pool to start managing NFT swaps</p>
+                <button
+                  onClick={() => setShowCreatePool(true)}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
+                >
+                  Create First Pool
+                </button>
+              </div>
+            ) : (
+              pools.map((pool) => (
+                <div key={pool.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <img
+                        src={pool.collection_image}
+                        alt={pool.collection_name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{pool.collection_name}</h4>
+                        <p className="text-gray-400">{pool.collection_id}</p>
+                        <p className="text-sm text-gray-500">
+                          Pool: {pool.pool_address.slice(0, 8)}...{pool.pool_address.slice(-8)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-6">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">NFTs</p>
+                        <p className="text-lg font-semibold text-white">{pool.nft_count}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">Fee</p>
+                        <p className="text-lg font-semibold text-white">{pool.swap_fee} SOL</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">Volume</p>
+                        <p className="text-lg font-semibold text-white">{pool.total_volume.toFixed(2)} SOL</p>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditPool(pool)}
+                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                          title="Edit pool"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleTogglePool(pool.collection_id)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            pool.is_active
+                              ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
+                              : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                          }`}
+                          title={pool.is_active ? 'Deactivate pool' : 'Activate pool'}
+                        >
+                          {pool.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDeletePool(pool.collection_id)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Delete pool"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-6">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">NFTs</p>
-                      <p className="text-lg font-semibold text-white">{pool.nft_count}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Fee</p>
-                      <p className="text-lg font-semibold text-white">{pool.swap_fee} SOL</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Volume</p>
-                      <p className="text-lg font-semibold text-white">{pool.total_volume.toFixed(2)} SOL</p>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEditPool(pool)}
-                        className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                        title="Edit pool"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleTogglePool(pool.collection_id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          pool.is_active
-                            ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
-                            : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
-                        }`}
-                        title={pool.is_active ? 'Deactivate pool' : 'Activate pool'}
-                      >
-                        {pool.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDeletePool(pool.collection_id)}
-                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                        title="Delete pool"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                  {pool.description && (
+                    <p className="text-gray-400 text-sm mt-4">{pool.description}</p>
+                  )}
                 </div>
-                
-                {pool.description && (
-                  <p className="text-gray-400 text-sm mt-4">{pool.description}</p>
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}
