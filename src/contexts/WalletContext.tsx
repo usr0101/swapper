@@ -7,6 +7,7 @@ import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { getUserBalance } from '../lib/solana';
 import { getAdminSettings, getApiConfig, migrateFromLocalStorage, cleanupLocalStorage, forceCleanup, getGlobalPlatformBranding } from '../lib/supabase';
+import { validateEnvironment } from '../lib/anchor';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -53,7 +54,11 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [balance, setBalance] = useState(0);
   const [platformActive, setPlatformActiveState] = useState(true);
   const [maintenanceMessage, setMaintenanceMessage] = useState('Platform is currently under maintenance. Please check back later.');
-  const [network, setNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');
+  const [network, setNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
+    // SECURITY FIX: Get network from environment variable
+    const envNetwork = import.meta.env.VITE_SOLANA_NETWORK;
+    return (envNetwork === 'mainnet-beta') ? 'mainnet-beta' : 'devnet';
+  });
   const [adminSettings, setAdminSettings] = useState<any>(null);
   const [apiConfig, setApiConfig] = useState<any>(null);
   const [migrationCompleted, setMigrationCompleted] = useState(false);
@@ -73,8 +78,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [brandingLoaded, setBrandingLoaded] = useState(false); // Start as not loaded
   const [brandingLoading, setBrandingLoading] = useState(false); // No loading needed initially
 
-  const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
+  // SECURITY FIX: Get admin address from environment variable
+  const ADMIN_ADDRESS = import.meta.env.VITE_ADMIN_WALLET || 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
+
+  // Validate environment on startup
+  useEffect(() => {
+    const isValid = validateEnvironment();
+    if (!isValid) {
+      console.warn('⚠️ Please check your environment configuration in .env file');
+    }
+  }, []);
 
   // ENHANCED: Immediate cleanup on component mount
   useEffect(() => {
@@ -326,6 +340,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const getHeliusApiKey = () => {
+    // SECURITY FIX: Get from environment variable first, then fallback to user config
+    const envApiKey = import.meta.env.VITE_HELIUS_API_KEY;
+    if (envApiKey && envApiKey !== 'your_helius_api_key_here') {
+      return envApiKey;
+    }
+    
     return apiConfig?.helius_api_key || adminSettings?.helius_api_key || 'd260d547-850c-4cb6-8412-9c764f0c9df1';
   };
 
@@ -396,15 +416,31 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 };
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');
+  // SECURITY FIX: Get network from environment variable
+  const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
+    const envNetwork = import.meta.env.VITE_SOLANA_NETWORK;
+    return (envNetwork === 'mainnet-beta') ? 'mainnet-beta' : 'devnet';
+  });
 
   const network = currentNetwork === 'devnet' ? WalletAdapterNetwork.Devnet : WalletAdapterNetwork.Mainnet;
 
   const endpoint = useMemo(() => {
-    const heliusNetwork = currentNetwork === 'mainnet-beta' ? 'mainnet' : 'devnet';
-    const rpcUrl = `https://${heliusNetwork}.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1`;
-    console.log('Using RPC endpoint:', rpcUrl);
-    return rpcUrl;
+    // SECURITY FIX: Use environment-specific RPC endpoints
+    const heliusApiKey = import.meta.env.VITE_HELIUS_API_KEY;
+    
+    if (currentNetwork === 'mainnet-beta') {
+      // For mainnet, use Helius if available, otherwise fallback to public RPC
+      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here') {
+        return `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+      }
+      return clusterApiUrl('mainnet-beta');
+    } else {
+      // For devnet, use Helius if available, otherwise fallback to public RPC
+      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here') {
+        return `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+      }
+      return clusterApiUrl('devnet');
+    }
   }, [currentNetwork]);
 
   const wallets = useMemo(
@@ -414,6 +450,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     ],
     []
   );
+
+  console.log('🌐 Using RPC endpoint:', endpoint);
+  console.log('🔗 Network:', currentNetwork);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
