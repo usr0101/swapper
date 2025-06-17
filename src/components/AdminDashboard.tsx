@@ -87,6 +87,17 @@ export const AdminDashboard: React.FC = () => {
     totalVolume: 0,
   });
 
+  // CRITICAL FIX: Update admin settings when context values change
+  useEffect(() => {
+    setAdminSettings(prev => ({
+      ...prev,
+      platformName: platformName,
+      platformDescription: platformDescription,
+      platformIcon: platformIcon,
+      network: network,
+    }));
+  }, [platformName, platformDescription, platformIcon, network]);
+
   // Load data on component mount
   useEffect(() => {
     if (isAdmin && address) {
@@ -114,8 +125,10 @@ export const AdminDashboard: React.FC = () => {
       setPoolStats(stats);
 
       // Load admin settings
+      console.log('📋 Loading admin settings for dashboard...');
       const settings = await getAdminSettings(address);
       if (settings) {
+        console.log('✅ Admin settings loaded:', settings);
         setAdminSettings({
           feeCollectorWallet: settings.fee_collector_wallet,
           defaultSwapFee: settings.default_swap_fee.toString(),
@@ -127,6 +140,8 @@ export const AdminDashboard: React.FC = () => {
           platformDescription: settings.platform_description || platformDescription,
           platformIcon: settings.platform_icon || platformIcon,
         });
+      } else {
+        console.log('⚠️ No admin settings found, using defaults');
       }
 
       // Load API config
@@ -151,6 +166,8 @@ export const AdminDashboard: React.FC = () => {
 
     setSaving(true);
     try {
+      console.log('💾 Saving admin settings:', adminSettings);
+
       // Save admin settings
       await saveAdminSettings({
         user_wallet: address,
@@ -173,17 +190,30 @@ export const AdminDashboard: React.FC = () => {
         network: apiConfig.network as 'devnet' | 'mainnet-beta',
       });
 
-      // Update platform branding in context
-      updatePlatformBranding(adminSettings.platformName, adminSettings.platformDescription, adminSettings.platformIcon);
+      // CRITICAL FIX: Update platform branding in context immediately after saving
+      console.log('🎨 Updating platform branding in context...');
+      await updatePlatformBranding(adminSettings.platformName, adminSettings.platformDescription, adminSettings.platformIcon);
 
       // Update network if changed
       if (adminSettings.network !== network) {
         switchNetwork(adminSettings.network as 'devnet' | 'mainnet-beta');
       }
 
-      console.log('✅ Settings saved successfully');
+      console.log('✅ Settings saved successfully and applied to platform');
+      
+      // Show success feedback
+      const originalText = document.querySelector('[data-save-button]')?.textContent;
+      const saveButton = document.querySelector('[data-save-button]');
+      if (saveButton) {
+        saveButton.textContent = 'Saved!';
+        setTimeout(() => {
+          saveButton.textContent = originalText || 'Save Settings';
+        }, 2000);
+      }
+
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('❌ Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -619,6 +649,7 @@ export const AdminDashboard: React.FC = () => {
             <button
               onClick={handleSaveSettings}
               disabled={saving}
+              data-save-button
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <Save className="h-4 w-4" />

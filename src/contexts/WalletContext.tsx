@@ -87,18 +87,26 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return () => clearTimeout(timer);
   }, []);
 
-  // Load settings from Supabase when wallet connects
+  // CRITICAL FIX: Load settings from Supabase when wallet connects OR when admin status changes
   useEffect(() => {
     if (connected && publicKey && !migrationCompleted) {
       loadSettingsFromSupabase();
     }
   }, [connected, publicKey, migrationCompleted]);
 
+  // CRITICAL FIX: Also load settings when admin status changes (for non-admin users who might have settings)
+  useEffect(() => {
+    if (connected && publicKey && migrationCompleted && isAdmin) {
+      console.log('🔄 Admin status detected, reloading settings...');
+      loadSettingsFromSupabase();
+    }
+  }, [isAdmin, connected, publicKey, migrationCompleted]);
+
   const loadSettingsFromSupabase = async () => {
     if (!publicKey) return;
 
     try {
-      console.log('🔄 Loading settings from Supabase...');
+      console.log('🔄 Loading settings from Supabase for wallet:', publicKey.toString());
 
       // ENHANCED: Always clean localStorage first
       cleanupLocalStorage();
@@ -113,35 +121,58 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setMigrationCompleted(true);
       }
 
-      // Load admin settings
+      // CRITICAL FIX: Load admin settings and apply platform branding immediately
+      console.log('📋 Loading admin settings from Supabase...');
       const settings = await getAdminSettings(publicKey.toString());
       if (settings) {
+        console.log('✅ Admin settings found:', {
+          platform_name: settings.platform_name,
+          platform_description: settings.platform_description,
+          platform_icon: settings.platform_icon,
+          platform_active: settings.platform_active,
+          network: settings.network,
+        });
+
         setAdminSettings(settings);
         setPlatformActiveState(settings.platform_active);
         setMaintenanceMessage(settings.maintenance_message);
         setNetwork(settings.network);
         
-        // Load platform branding if available
-        if (settings.platform_name) setPlatformName(settings.platform_name);
-        if (settings.platform_description) setPlatformDescription(settings.platform_description);
-        if (settings.platform_icon) setPlatformIcon(settings.platform_icon);
+        // CRITICAL FIX: Apply platform branding immediately
+        if (settings.platform_name) {
+          console.log('🎨 Applying platform name:', settings.platform_name);
+          setPlatformName(settings.platform_name);
+        }
+        if (settings.platform_description) {
+          console.log('🎨 Applying platform description:', settings.platform_description);
+          setPlatformDescription(settings.platform_description);
+        }
+        if (settings.platform_icon) {
+          console.log('🎨 Applying platform icon:', settings.platform_icon);
+          setPlatformIcon(settings.platform_icon);
+        }
         
-        console.log('✅ Admin settings loaded from Supabase');
+        console.log('✅ Admin settings loaded and applied from Supabase');
+      } else {
+        console.log('⚠️ No admin settings found in Supabase');
       }
 
       // Load API config
+      console.log('🔧 Loading API config from Supabase...');
       const config = await getApiConfig(publicKey.toString());
       if (config) {
         setApiConfig(config);
         setNetwork(config.network);
         console.log('✅ API config loaded from Supabase');
+      } else {
+        console.log('⚠️ No API config found in Supabase');
       }
 
       // Refresh balance
       refreshBalance();
 
     } catch (error) {
-      console.error('Error loading settings from Supabase:', error);
+      console.error('❌ Error loading settings from Supabase:', error);
     }
   };
 
@@ -222,11 +253,24 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Update platform branding
-  const updatePlatformBranding = (name: string, description: string, icon: string) => {
+  // CRITICAL FIX: Update platform branding and persist to Supabase
+  const updatePlatformBranding = async (name: string, description: string, icon: string) => {
+    console.log('🎨 Updating platform branding:', { name, description, icon });
+    
+    // Update local state immediately
     setPlatformName(name);
     setPlatformDescription(description);
     setPlatformIcon(icon);
+    
+    // CRITICAL FIX: Also update the adminSettings state so it persists
+    setAdminSettings((prev: any) => prev ? {
+      ...prev,
+      platform_name: name,
+      platform_description: description,
+      platform_icon: icon,
+    } : null);
+    
+    console.log('✅ Platform branding updated in context');
   };
 
   return (
