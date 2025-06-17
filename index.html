@@ -2,9 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Favicon Settings -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+    <link rel="mask-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" color="#8b5cf6" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Swapper - Premium NFT Exchange Platform</title>
+    
+    <!-- Dynamic Title and Meta Tags (will be updated by JavaScript) -->
+    <title id="dynamic-title">Swapper - Real NFT Exchange</title>
+    <meta name="description" id="dynamic-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" id="og-title" content="Swapper - Real NFT Exchange" />
+    <meta property="og:description" id="og-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://statuesque-piroshki-82ea55.netlify.app" />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&h=630&fit=crop&crop=center" />
+    <meta property="og:site_name" id="og-site-name" content="Swapper" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" id="twitter-title" content="Swapper - Real NFT Exchange" />
+    <meta name="twitter:description" id="twitter-description" content="Real NFT Exchange platform for swapping NFTs on Solana blockchain" />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&h=630&fit=crop&crop=center" />
+    
+    <!-- Additional Meta Tags -->
+    <meta name="keywords" content="NFT, Solana, Swap, Exchange, Blockchain, DeFi, Web3" />
+    <meta name="author" content="Swapper Platform" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#8b5cf6" />
+    
+    <!-- Preconnect for Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -12,5 +42,49 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Dynamic Meta Update Script -->
+    <script>
+      // Function to update meta tags dynamically
+      window.updateMetaTags = function(platformName, platformDescription, platformIcon) {
+        const title = `${platformName} - ${platformDescription}`;
+        const description = `${platformDescription} - Swap NFTs on Solana blockchain with ${platformName}`;
+        
+        // Update title
+        document.getElementById('dynamic-title').textContent = title;
+        document.title = title;
+        
+        // Update description
+        document.getElementById('dynamic-description').setAttribute('content', description);
+        
+        // Update Open Graph tags
+        document.getElementById('og-title').setAttribute('content', title);
+        document.getElementById('og-description').setAttribute('content', description);
+        document.getElementById('og-site-name').setAttribute('content', platformName);
+        
+        // Update Twitter Card tags
+        document.getElementById('twitter-title').setAttribute('content', title);
+        document.getElementById('twitter-description').setAttribute('content', description);
+        
+        // Update favicon with platform icon
+        if (platformIcon && platformIcon !== '⚡') {
+          const faviconSvg = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${encodeURIComponent(platformIcon)}</text></svg>`;
+          
+          // Update all favicon links
+          const faviconLinks = document.querySelectorAll('link[rel*="icon"]');
+          faviconLinks.forEach(link => {
+            link.href = faviconSvg;
+          });
+        }
+        
+        console.log('✅ Meta tags updated:', { title, description, icon: platformIcon });
+      };
+      
+      // Listen for platform branding updates
+      window.addEventListener('platformBrandingUpdated', function(event) {
+        const { platformName, platformDescription, platformIcon } = event.detail;
+        window.updateMetaTags(platformName, platformDescription, platformIcon);
+      });
+    </script>
   </body>
 </html>

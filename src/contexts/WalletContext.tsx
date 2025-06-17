@@ -82,6 +82,25 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     cleanupLocalStorage();
   }, []);
 
+  // CRITICAL: Update HTML meta tags when branding changes
+  useEffect(() => {
+    if (brandingLoaded && typeof window !== 'undefined') {
+      console.log('🔄 Updating HTML meta tags with platform branding...');
+      
+      // Update meta tags using the global function
+      if (window.updateMetaTags) {
+        window.updateMetaTags(platformName, platformDescription, platformIcon);
+      }
+      
+      // Dispatch custom event for any other listeners
+      window.dispatchEvent(new CustomEvent('platformBrandingUpdated', {
+        detail: { platformName, platformDescription, platformIcon }
+      }));
+      
+      console.log('✅ HTML meta tags updated with platform branding');
+    }
+  }, [platformName, platformDescription, platformIcon, brandingLoaded]);
+
   // Load platform branding from database and update defaults
   useEffect(() => {
     const loadGlobalBranding = async () => {
@@ -375,14 +394,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     </WalletContext.Provider>
   );
 };
-
-// Add loading states to context type
-interface WalletContextType {
-  // ... existing properties
-  brandingLoaded: boolean;
-  brandingLoading: boolean;
-  // ... rest of properties
-}
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');
