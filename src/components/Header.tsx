@@ -32,7 +32,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {platformName}
               </h1>
-              <p className="text-xs text-gray-400 hidden sm:block">{platformDescription}</p>
+              {/* FIXED: Show platform description on mobile too */}
+              <p className="text-xs text-gray-400">{platformDescription}</p>
             </div>
           </button>
 
@@ -67,16 +68,14 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
 
             {/* Desktop Right Side */}
             <div className="flex items-center space-x-4">
-              {/* Network Indicator */}
-              <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg text-sm font-medium ${
-                network === 'devnet'
-                  ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-200'
-                  : 'bg-green-500/10 border border-green-500/20 text-green-200'
-              }`}>
+              {/* FIXED: Network Indicator with dot like mobile */}
+              <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${
                   network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
                 }`}></div>
-                <span>{network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}</span>
+                <span className="text-sm font-medium text-gray-300">
+                  {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
+                </span>
               </div>
 
               {isConnected && address && (
@@ -168,15 +167,13 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
               </div>
 
               {/* Mobile Network Indicator */}
-              <div className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                network === 'devnet'
-                  ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-200'
-                  : 'bg-green-500/10 border border-green-500/20 text-green-200'
-              }`}>
+              <div className="flex items-center space-x-2 px-3 py-2">
                 <div className={`w-2 h-2 rounded-full ${
                   network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
                 }`}></div>
-                <span>{network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}</span>
+                <span className="text-sm font-medium text-gray-300">
+                  {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
+                </span>
               </div>
 
               {/* Mobile Wallet Button (if not connected) */}
