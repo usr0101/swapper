@@ -16,14 +16,20 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
   };
 
+  // Handle platform name click to go home
+  const handlePlatformClick = () => {
+    onViewChange('swap');
+    setMobileMenuOpen(false); // Close mobile menu if open
+  };
+
   return (
     <header className="border-b border-white/10 backdrop-blur-xl bg-white/5">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo and Title - Left Aligned */}
           <div className="flex items-center space-x-8">
-            <a
-              href="/"
+            <button
+              onClick={handlePlatformClick}
               className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 transform hover:scale-105 group"
             >
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center min-w-[2.5rem] group-hover:shadow-lg group-hover:shadow-purple-500/25 transition-all duration-200">
@@ -36,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 {/* Always show platform description on all screen sizes */}
                 <p className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors duration-200">{platformDescription}</p>
               </div>
-            </a>
+            </button>
 
             {/* Desktop Navigation - Next to Logo */}
             <nav className="hidden md:flex items-center space-x-1">
