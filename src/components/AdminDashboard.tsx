@@ -26,7 +26,8 @@ import {
   Zap,
   Copy,
   Menu,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { CreatePoolModal } from './CreatePoolModal';
 import { EditPoolModal } from './EditPoolModal';
@@ -80,6 +81,8 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const [showApiKey, setShowApiKey] = useState(false);
+  const [validatingRpc, setValidatingRpc] = useState(false);
+  const [rpcValidationResult, setRpcValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [poolStats, setPoolStats] = useState({
     totalPools: 0,
     activePools: 0,
@@ -355,6 +358,73 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleValidateRpc = async () => {
+    if (!apiConfig.heliusRpc.trim()) {
+      setRpcValidationResult({ valid: false, message: 'Please enter an RPC URL' });
+      return;
+    }
+
+    setValidatingRpc(true);
+    setRpcValidationResult(null);
+
+    try {
+      console.log('🔍 Validating RPC URL:', apiConfig.heliusRpc);
+      
+      // Test the RPC with a simple getHealth call
+      const response = await fetch(apiConfig.heliusRpc, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getHealth',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message || 'RPC returned an error');
+      }
+
+      // Check if it's a Helius endpoint
+      const isHelius = apiConfig.heliusRpc.includes('helius-rpc.com');
+      const network = apiConfig.heliusRpc.includes('mainnet') ? 'mainnet' : 'devnet';
+      
+      setRpcValidationResult({ 
+        valid: true, 
+        message: `✅ RPC is working! ${isHelius ? `Helius ${network}` : 'Custom'} endpoint responding correctly.` 
+      });
+      
+      console.log('✅ RPC validation successful:', data);
+      
+    } catch (error) {
+      console.error('❌ RPC validation failed:', error);
+      
+      let errorMessage = 'RPC validation failed: ';
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage += 'Network error or invalid URL';
+      } else if (error.message.includes('HTTP 401')) {
+        errorMessage += 'Invalid API key';
+      } else if (error.message.includes('HTTP 403')) {
+        errorMessage += 'API key lacks permissions';
+      } else if (error.message.includes('HTTP 429')) {
+        errorMessage += 'Rate limit exceeded';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      setRpcValidationResult({ valid: false, message: errorMessage });
+    } finally {
+      setValidatingRpc(false);
+    }
+  };
   const formatAddress = (address: string) => {
     return `${address.slice(0, 8)}...${address.slice(-8)}`;
   };
