@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
                 <span className="text-xl">{platformIcon}</span>
               </div>
-              <div>
+              <div className="text-left">
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                   {platformName}
                 </h1>
@@ -66,9 +66,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
             </nav>
           </div>
 
-          {/* Desktop Right Side - Wallet Info with Network Dot */}
+          {/* Desktop Right Side - Wallet Info with Network Dot (only when connected) */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* Wallet Info and Button */}
             {isConnected && address ? (
               <div className="flex items-center space-x-3">
                 <div className="text-right">
@@ -79,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                     {formatAddress(address)}
                   </div>
                 </div>
-                {/* Network dot positioned near wallet info */}
+                {/* Network dot only shown when wallet is connected */}
                 <div className={`w-2 h-2 rounded-full ${
                   network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
                 }`}></div>
@@ -88,21 +87,15 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-                {/* Network dot even when not connected */}
-                <div className={`w-2 h-2 rounded-full ${
-                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-                }`}></div>
-                <div className="wallet-adapter-button-trigger">
-                  <WalletMultiButton />
-                </div>
+              <div className="wallet-adapter-button-trigger">
+                <WalletMultiButton />
               </div>
             )}
           </div>
 
           {/* Mobile Right Side - Wallet and Menu */}
           <div className="md:hidden flex items-center space-x-3">
-            {/* Mobile Wallet Info */}
+            {/* Mobile Wallet Info (only when connected) */}
             {isConnected && address ? (
               <div className="flex items-center space-x-2 bg-white/5 rounded-lg px-3 py-2">
                 <div className="text-right">
@@ -113,6 +106,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                     {formatAddress(address)}
                   </div>
                 </div>
+                {/* Network dot only shown when wallet is connected */}
                 <div className={`w-2 h-2 rounded-full ${
                   network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
                 }`}></div>
@@ -171,15 +165,17 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 )}
               </div>
 
-              {/* Mobile Network Indicator */}
-              <div className="flex items-center space-x-2 px-3 py-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-                }`}></div>
-                <span className="text-sm font-medium text-gray-300">
-                  {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
-                </span>
-              </div>
+              {/* Mobile Network Indicator (only when connected) */}
+              {isConnected && (
+                <div className="flex items-center space-x-2 px-3 py-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+                  }`}></div>
+                  <span className="text-sm font-medium text-gray-300">
+                    {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
+                  </span>
+                </div>
+              )}
 
               {/* Mobile Wallet Button (if not connected) */}
               {!isConnected && (
