@@ -66,18 +66,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
             </nav>
           </div>
 
-          {/* Desktop Right Side - Like Mobile */}
+          {/* Desktop Right Side - Wallet Info with Network Dot */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* Network Indicator with dot like mobile */}
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${
-                network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-              }`}></div>
-              <span className="text-sm font-medium text-gray-300">
-                {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
-              </span>
-            </div>
-
             {/* Wallet Info and Button */}
             {isConnected && address ? (
               <div className="flex items-center space-x-3">
@@ -89,13 +79,23 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                     {formatAddress(address)}
                   </div>
                 </div>
+                {/* Network dot positioned near wallet info */}
+                <div className={`w-2 h-2 rounded-full ${
+                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+                }`}></div>
                 <div className="wallet-adapter-button-trigger">
                   <WalletMultiButton />
                 </div>
               </div>
             ) : (
-              <div className="wallet-adapter-button-trigger">
-                <WalletMultiButton />
+              <div className="flex items-center space-x-3">
+                {/* Network dot even when not connected */}
+                <div className={`w-2 h-2 rounded-full ${
+                  network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
+                }`}></div>
+                <div className="wallet-adapter-button-trigger">
+                  <WalletMultiButton />
+                </div>
               </div>
             )}
           </div>
