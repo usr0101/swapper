@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Upload, AlertTriangle, CheckCircle, Loader2, Key, Plus, Copy, Eye, EyeOff, FileText } from 'lucide-react';
 import { createNewPool } from '../lib/pool-manager';
 import { useWallet } from '../contexts/WalletContext';
@@ -36,6 +36,65 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
   const [creating, setCreating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // GLOBAL MODAL FIX: Prevent background scrolling and fix margin-top issue
+  useEffect(() => {
+    // Store current scroll position
+    const scrollY = window.scrollY;
+    
+    // Get the original styles
+    const originalBodyStyle = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      height: document.body.style.height,
+      overflow: document.body.style.overflow,
+      margin: document.body.style.margin,
+      padding: document.body.style.padding,
+      boxSizing: document.body.style.boxSizing,
+    };
+    
+    const originalHtmlStyle = {
+      margin: document.documentElement.style.margin,
+      padding: document.documentElement.style.padding,
+      overflow: document.documentElement.style.overflow,
+      height: document.documentElement.style.height,
+    };
+    
+    // Apply complete viewport lock with zero margins
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100vw';
+    document.body.style.height = '100vh';
+    document.body.style.overflow = 'hidden';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.boxSizing = 'border-box';
+    
+    // Also lock the html element
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.height = '100vh';
+
+    return () => {
+      // Restore all original styles
+      Object.entries(originalBodyStyle).forEach(([key, value]) => {
+        document.body.style[key as any] = value;
+      });
+      
+      Object.entries(originalHtmlStyle).forEach(([key, value]) => {
+        document.documentElement.style[key as any] = value;
+      });
+      
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -308,457 +367,466 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Create New Pool</h2>
-              <p className="text-gray-400 mt-1">Add a new NFT collection to the swap platform</p>
-              {defaultSwapFee && (
-                <p className="text-blue-200 text-sm mt-1">
-                  Default swap fee: {defaultSwapFee} SOL (can be customized)
-                </p>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* General Error */}
-          {errors.general && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                <div>
-                  <p className="text-red-200 font-medium">Error</p>
-                  <p className="text-red-100/80 text-sm mt-1">{errors.general}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Collection Address */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Collection Address *
-            </label>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={formData.collectionAddress}
-                onChange={(e) => handleInputChange('collectionAddress', e.target.value)}
-                className={`flex-1 px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                  errors.collectionAddress ? 'border-red-500' : 'border-white/20'
-                }`}
-                placeholder="Enter Solana collection address"
-              />
-              <button
-                type="button"
-                onClick={handleValidateCollection}
-                disabled={validating || !formData.collectionAddress.trim()}
-                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-              >
-                {validating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4" />
+    <div className="modal-overlay modal-overlay-fix">
+      <div className="modal-container modal-container-fix modal-large">
+        <div className="modal-content">
+          {/* Modal Header */}
+          <div className="modal-header">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Create New Pool</h2>
+                <p className="text-gray-400 mt-1">Add a new NFT collection to the swap platform</p>
+                {defaultSwapFee && (
+                  <p className="text-blue-200 text-sm mt-1">
+                    Default swap fee: {defaultSwapFee} SOL (can be customized)
+                  </p>
                 )}
-                <span>Validate</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
               </button>
             </div>
-            {errors.collectionAddress && (
-              <p className="text-red-400 text-sm mt-1">{errors.collectionAddress}</p>
-            )}
-            {validationResult && (
-              <div className={`mt-2 p-2 rounded-lg text-sm ${
-                validationResult.valid 
-                  ? 'bg-green-500/10 border border-green-500/20 text-green-200'
-                  : 'bg-red-500/10 border border-red-500/20 text-red-200'
-              }`}>
-                {validationResult.message}
-              </div>
-            )}
           </div>
 
-          {/* Pool Address Options */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">
-              Pool Wallet Configuration *
-            </label>
-            
-            {/* Option Selection */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <button
-                type="button"
-                onClick={() => setPoolAddressOption('create')}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  poolAddressOption === 'create'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/20 bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Plus className="h-5 w-5 text-purple-400" />
-                  <div className="text-left">
-                    <p className="text-white font-medium">Create New</p>
-                    <p className="text-gray-400 text-sm">Generate wallet</p>
+          {/* Modal Body */}
+          <div className="modal-body">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* General Error */}
+              {errors.general && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                    <div>
+                      <p className="text-red-200 font-medium">Error</p>
+                      <p className="text-red-100/80 text-sm mt-1">{errors.general}</p>
+                    </div>
                   </div>
                 </div>
-              </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setPoolAddressOption('import')}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  poolAddressOption === 'import'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/20 bg-white/5 hover:bg-white/10'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-5 w-5 text-green-400" />
-                  <div className="text-left">
-                    <p className="text-white font-medium">Import Wallet</p>
-                    <p className="text-gray-400 text-sm">Private + Public Key</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {/* Create New Wallet Option */}
-            {poolAddressOption === 'create' && (
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-white font-medium">Generate New Wallet</h4>
+              {/* Collection Address */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Collection Address *
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={formData.collectionAddress}
+                    onChange={(e) => handleInputChange('collectionAddress', e.target.value)}
+                    className={`flex-1 px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.collectionAddress ? 'border-red-500' : 'border-white/20'
+                    }`}
+                    placeholder="Enter Solana collection address"
+                  />
                   <button
                     type="button"
-                    onClick={generateNewWallet}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2"
+                    onClick={handleValidateCollection}
+                    disabled={validating || !formData.collectionAddress.trim()}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
                   >
-                    <Plus className="h-3 w-3" />
-                    <span>Generate</span>
+                    {validating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    <span>Validate</span>
                   </button>
                 </div>
-                
-                {generatedWallet ? (
-                  <div className="space-y-3">
-                    {/* Public Key */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Public Key (Pool Address)</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={generatedWallet.publicKey}
-                          readOnly
-                          className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(generatedWallet.publicKey, 'Public key')}
-                          className="p-2 hover:bg-white/10 rounded transition-colors"
-                        >
-                          <Copy className="h-4 w-4 text-gray-400" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Private Key */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Private Key (Keep Secure!)</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type={showPrivateKey ? 'text' : 'password'}
-                          value={generatedWallet.secretKey}
-                          readOnly
-                          className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPrivateKey(!showPrivateKey)}
-                          className="p-2 hover:bg-white/10 rounded transition-colors"
-                        >
-                          {showPrivateKey ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(generatedWallet.secretKey, 'Private key')}
-                          className="p-2 hover:bg-white/10 rounded transition-colors"
-                        >
-                          <Copy className="h-4 w-4 text-gray-400" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Success Message */}
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <div className="flex items-start space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
-                        <div className="text-sm">
-                          <p className="text-green-200 font-medium">Wallet Generated Successfully</p>
-                          <p className="text-green-100/80 text-xs mt-1">
-                            This wallet will have full swap access. Save the private key securely!
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <Key className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">Click "Generate" to create a new wallet for this pool</p>
+                {errors.collectionAddress && (
+                  <p className="text-red-400 text-sm mt-1">{errors.collectionAddress}</p>
+                )}
+                {validationResult && (
+                  <div className={`mt-2 p-2 rounded-lg text-sm ${
+                    validationResult.valid 
+                      ? 'bg-green-500/10 border border-green-500/20 text-green-200'
+                      : 'bg-red-500/10 border border-red-500/20 text-red-200'
+                  }`}>
+                    {validationResult.message}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Import Wallet Option with Public Key */}
-            {poolAddressOption === 'import' && (
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-4">Import Existing Wallet</h4>
+              {/* Pool Address Options */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Pool Wallet Configuration *
+                </label>
                 
-                <div className="space-y-4">
-                  {/* Private Key Input */}
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-2">
-                      Private Key *
-                    </label>
-                    <textarea
-                      value={importPrivateKey}
-                      onChange={(e) => {
-                        setImportPrivateKey(e.target.value);
-                        if (errors.poolAddress) {
-                          setErrors(prev => ({ ...prev, poolAddress: '' }));
-                        }
-                      }}
-                      rows={3}
-                      className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
-                        errors.poolAddress ? 'border-red-500' : 'border-white/20'
-                      }`}
-                      placeholder="Paste private key (comma-separated numbers, JSON array, or base64)"
-                    />
-                    <p className="text-gray-500 text-xs mt-1">
-                      Supported formats: [1,2,3...], 1,2,3... or base64
-                    </p>
-                  </div>
+                {/* Option Selection */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setPoolAddressOption('create')}
+                    className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                      poolAddressOption === 'create'
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-white/20 bg-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Plus className="h-5 w-5 text-purple-400" />
+                      <div className="text-left">
+                        <p className="text-white font-medium">Create New</p>
+                        <p className="text-gray-400 text-sm">Generate wallet</p>
+                      </div>
+                    </div>
+                  </button>
 
-                  {/* Public Key Input */}
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-2">
-                      Public Key (Optional - for verification)
-                    </label>
-                    <input
-                      type="text"
-                      value={importPublicKey}
-                      onChange={(e) => {
-                        setImportPublicKey(e.target.value);
-                        if (errors.publicKey) {
-                          setErrors(prev => ({ ...prev, publicKey: '' }));
-                        }
-                      }}
-                      className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
-                        errors.publicKey ? 'border-red-500' : 'border-white/20'
-                      }`}
-                      placeholder="Enter public key to verify it matches the private key"
-                    />
-                    <p className="text-gray-500 text-xs mt-1">
-                      If provided, we'll verify this matches your private key. If empty, we'll auto-fill it.
-                    </p>
-                    {errors.publicKey && (
-                      <p className="text-red-400 text-sm mt-1">{errors.publicKey}</p>
+                  <button
+                    type="button"
+                    onClick={() => setPoolAddressOption('import')}
+                    className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                      poolAddressOption === 'import'
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-white/20 bg-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-5 w-5 text-green-400" />
+                      <div className="text-left">
+                        <p className="text-white font-medium">Import Wallet</p>
+                        <p className="text-gray-400 text-sm">Private + Public Key</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Create New Wallet Option */}
+                {poolAddressOption === 'create' && (
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-white font-medium">Generate New Wallet</h4>
+                      <button
+                        type="button"
+                        onClick={generateNewWallet}
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Generate</span>
+                      </button>
+                    </div>
+                    
+                    {generatedWallet ? (
+                      <div className="space-y-3">
+                        {/* Public Key */}
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Public Key (Pool Address)</label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={generatedWallet.publicKey}
+                              readOnly
+                              className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(generatedWallet.publicKey, 'Public key')}
+                              className="p-2 hover:bg-white/10 rounded transition-colors"
+                            >
+                              <Copy className="h-4 w-4 text-gray-400" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Private Key */}
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Private Key (Keep Secure!)</label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type={showPrivateKey ? 'text' : 'password'}
+                              value={generatedWallet.secretKey}
+                              readOnly
+                              className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPrivateKey(!showPrivateKey)}
+                              className="p-2 hover:bg-white/10 rounded transition-colors"
+                            >
+                              {showPrivateKey ? (
+                                <EyeOff className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(generatedWallet.secretKey, 'Private key')}
+                              className="p-2 hover:bg-white/10 rounded transition-colors"
+                            >
+                              <Copy className="h-4 w-4 text-gray-400" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Success Message */}
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                          <div className="flex items-start space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                            <div className="text-sm">
+                              <p className="text-green-200 font-medium">Wallet Generated Successfully</p>
+                              <p className="text-green-100/80 text-xs mt-1">
+                                This wallet will have full swap access. Save the private key securely!
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <Key className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-400 text-sm">Click "Generate" to create a new wallet for this pool</p>
+                      </div>
                     )}
                   </div>
+                )}
 
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={importWalletFromPrivateKey}
-                      disabled={!importPrivateKey.trim()}
-                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200"
-                    >
-                      Import & Verify
-                    </button>
-                  </div>
-                  
-                  {generatedWallet && (
-                    <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
-                      <p className="text-green-100/80 text-xs mt-1">
-                        Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
-                      </p>
-                      <p className="text-green-100/80 text-xs mt-1">
-                        🔑 This wallet will have full swap access
-                      </p>
+                {/* Import Wallet Option with Public Key */}
+                {poolAddressOption === 'import' && (
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-4">Import Existing Wallet</h4>
+                    
+                    <div className="space-y-4">
+                      {/* Private Key Input */}
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">
+                          Private Key *
+                        </label>
+                        <textarea
+                          value={importPrivateKey}
+                          onChange={(e) => {
+                            setImportPrivateKey(e.target.value);
+                            if (errors.poolAddress) {
+                              setErrors(prev => ({ ...prev, poolAddress: '' }));
+                            }
+                          }}
+                          rows={3}
+                          className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                            errors.poolAddress ? 'border-red-500' : 'border-white/20'
+                          }`}
+                          placeholder="Paste private key (comma-separated numbers, JSON array, or base64)"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">
+                          Supported formats: [1,2,3...], 1,2,3... or base64
+                        </p>
+                      </div>
+
+                      {/* Public Key Input */}
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">
+                          Public Key (Optional - for verification)
+                        </label>
+                        <input
+                          type="text"
+                          value={importPublicKey}
+                          onChange={(e) => {
+                            setImportPublicKey(e.target.value);
+                            if (errors.publicKey) {
+                              setErrors(prev => ({ ...prev, publicKey: '' }));
+                            }
+                          }}
+                          className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm ${
+                            errors.publicKey ? 'border-red-500' : 'border-white/20'
+                          }`}
+                          placeholder="Enter public key to verify it matches the private key"
+                        />
+                        <p className="text-gray-500 text-xs mt-1">
+                          If provided, we'll verify this matches your private key. If empty, we'll auto-fill it.
+                        </p>
+                        {errors.publicKey && (
+                          <p className="text-red-400 text-sm mt-1">{errors.publicKey}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={importWalletFromPrivateKey}
+                          disabled={!importPrivateKey.trim()}
+                          className="bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200"
+                        >
+                          Import & Verify
+                        </button>
+                      </div>
+                      
+                      {generatedWallet && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <p className="text-green-200 text-sm font-medium">✅ Wallet Imported Successfully</p>
+                          <p className="text-green-100/80 text-xs mt-1">
+                            Address: {generatedWallet.publicKey.slice(0, 8)}...{generatedWallet.publicKey.slice(-8)}
+                          </p>
+                          <p className="text-green-100/80 text-xs mt-1">
+                            🔑 This wallet will have full swap access
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                
+                {errors.poolAddress && (
+                  <p className="text-red-400 text-sm mt-1">{errors.poolAddress}</p>
+                )}
               </div>
-            )}
-            
-            {errors.poolAddress && (
-              <p className="text-red-400 text-sm mt-1">{errors.poolAddress}</p>
-            )}
-          </div>
 
-          {/* Collection ID */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Collection ID *
-            </label>
-            <input
-              type="text"
-              value={formData.collectionId}
-              onChange={(e) => handleInputChange('collectionId', e.target.value)}
-              className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                errors.collectionId ? 'border-red-500' : 'border-white/20'
-              }`}
-              placeholder="e.g., my-nft-collection"
-            />
-            {errors.collectionId && (
-              <p className="text-red-400 text-sm mt-1">{errors.collectionId}</p>
-            )}
-            <p className="text-gray-500 text-xs mt-1">Unique identifier for this collection (max 32 chars)</p>
-          </div>
-
-          {/* Collection Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Collection Name *
-            </label>
-            <input
-              type="text"
-              value={formData.collectionName}
-              onChange={(e) => handleInputChange('collectionName', e.target.value)}
-              className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                errors.collectionName ? 'border-red-500' : 'border-white/20'
-              }`}
-              placeholder="e.g., My NFT Collection"
-            />
-            {errors.collectionName && (
-              <p className="text-red-400 text-sm mt-1">{errors.collectionName}</p>
-            )}
-          </div>
-
-          {/* Collection Image */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Collection Image URL *
-            </label>
-            <input
-              type="url"
-              value={formData.collectionImage}
-              onChange={(e) => handleInputChange('collectionImage', e.target.value)}
-              className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                errors.collectionImage ? 'border-red-500' : 'border-white/20'
-              }`}
-              placeholder="https://example.com/collection-image.jpg"
-            />
-            {errors.collectionImage && (
-              <p className="text-red-400 text-sm mt-1">{errors.collectionImage}</p>
-            )}
-            {formData.collectionImage && isValidUrl(formData.collectionImage) && (
-              <div className="mt-2">
-                <img 
-                  src={formData.collectionImage} 
-                  alt="Collection preview" 
-                  className="w-20 h-20 rounded-lg object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
+              {/* Collection ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Collection ID *
+                </label>
+                <input
+                  type="text"
+                  value={formData.collectionId}
+                  onChange={(e) => handleInputChange('collectionId', e.target.value)}
+                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    errors.collectionId ? 'border-red-500' : 'border-white/20'
+                  }`}
+                  placeholder="e.g., my-nft-collection"
                 />
+                {errors.collectionId && (
+                  <p className="text-red-400 text-sm mt-1">{errors.collectionId}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">Unique identifier for this collection (max 32 chars)</p>
               </div>
-            )}
-          </div>
 
-          {/* Swap Fee */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Swap Fee (SOL) *
-            </label>
-            <input
-              type="number"
-              step="0.001"
-              min="0"
-              max="10"
-              value={formData.swapFee}
-              onChange={(e) => handleInputChange('swapFee', e.target.value)}
-              className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                errors.swapFee ? 'border-red-500' : 'border-white/20'
-              }`}
-            />
-            {errors.swapFee && (
-              <p className="text-red-400 text-sm mt-1">{errors.swapFee}</p>
-            )}
-            <p className="text-gray-500 text-xs mt-1">
-              Fee charged for each swap in this pool (default: {defaultSwapFee} SOL)
-            </p>
-          </div>
+              {/* Collection Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Collection Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.collectionName}
+                  onChange={(e) => handleInputChange('collectionName', e.target.value)}
+                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    errors.collectionName ? 'border-red-500' : 'border-white/20'
+                  }`}
+                  placeholder="e.g., My NFT Collection"
+                />
+                {errors.collectionName && (
+                  <p className="text-red-400 text-sm mt-1">{errors.collectionName}</p>
+                )}
+              </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-              placeholder="Optional description for this collection pool"
-            />
-          </div>
+              {/* Collection Image */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Collection Image URL *
+                </label>
+                <input
+                  type="url"
+                  value={formData.collectionImage}
+                  onChange={(e) => handleInputChange('collectionImage', e.target.value)}
+                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    errors.collectionImage ? 'border-red-500' : 'border-white/20'
+                  }`}
+                  placeholder="https://example.com/collection-image.jpg"
+                />
+                {errors.collectionImage && (
+                  <p className="text-red-400 text-sm mt-1">{errors.collectionImage}</p>
+                )}
+                {formData.collectionImage && isValidUrl(formData.collectionImage) && (
+                  <div className="mt-2">
+                    <img 
+                      src={formData.collectionImage} 
+                      alt="Collection preview" 
+                      className="w-20 h-20 rounded-lg object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
 
-          {/* Success Info */}
-          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <div className="text-sm">
-                <p className="text-green-200 font-medium mb-1">Pool Creation</p>
-                <p className="text-green-100/80">
-                  {poolAddressOption === 'create' 
-                    ? 'A new wallet will be generated with full swap access. The pool will be able to execute atomic swaps immediately.'
-                    : 'Your imported wallet will have full swap access. Make sure you have the private key to enable atomic swaps.'
-                  }
+              {/* Swap Fee */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Swap Fee (SOL) *
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max="10"
+                  value={formData.swapFee}
+                  onChange={(e) => handleInputChange('swapFee', e.target.value)}
+                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    errors.swapFee ? 'border-red-500' : 'border-white/20'
+                  }`}
+                />
+                {errors.swapFee && (
+                  <p className="text-red-400 text-sm mt-1">{errors.swapFee}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">
+                  Fee charged for each swap in this pool (default: {defaultSwapFee} SOL)
                 </p>
               </div>
-            </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                  placeholder="Optional description for this collection pool"
+                />
+              </div>
+
+              {/* Success Info */}
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-green-200 font-medium mb-1">Pool Creation</p>
+                    <p className="text-green-100/80">
+                      {poolAddressOption === 'create' 
+                        ? 'A new wallet will be generated with full swap access. The pool will be able to execute atomic swaps immediately.'
+                        : 'Your imported wallet will have full swap access. Make sure you have the private key to enable atomic swaps.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </form>
           </div>
 
-          {/* Actions */}
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all duration-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={creating}
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 disabled:transform-none flex items-center justify-center space-x-2"
-            >
-              {creating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Creating...</span>
-                </>
-              ) : (
-                <span>Create Pool</span>
-              )}
-            </button>
+          {/* Modal Footer */}
+          <div className="modal-footer">
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={creating}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 rounded-xl font-bold transition-all duration-200 hover:shadow-lg transform hover:scale-105 disabled:transform-none flex items-center justify-center space-x-2"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <span>Create Pool</span>
+                )}
+              </button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
