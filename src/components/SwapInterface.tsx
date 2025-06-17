@@ -663,7 +663,7 @@ export const SwapInterface: React.FC = () => {
                     ) : hasSwapCapability === true ? (
                       <div className="text-green-400 text-xs flex items-center justify-center space-x-1">
                         <Key className="h-3 w-3" />
-                        <span>Atomic swap available</span>
+                        <span>Swap available</span>
                       </div>
                     ) : hasSwapCapability === false ? (
                       <div className="text-red-400 text-xs flex items-center justify-center space-x-1">
