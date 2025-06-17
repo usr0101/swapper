@@ -31,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
             <button
               onClick={handlePlatformClick}
               className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 transform hover:scale-105 group"
+              title="Go to Home"
             >
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center min-w-[2.5rem] group-hover:shadow-lg group-hover:shadow-purple-500/25 transition-all duration-200">
                 <span className="text-xl">{platformIcon}</span>
