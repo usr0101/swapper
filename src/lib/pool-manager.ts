@@ -1,103 +1,12 @@
-import { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { createAssociatedTokenAccount, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { supabase, createPool, getAllPools as getPoolsFromDB, getPool as getPoolFromDB, updatePoolStats as updatePoolStatsDB, togglePoolStatus, deletePool as deletePoolFromDB, storePoolWallet, getPoolWalletData as getPoolWalletFromDB, PoolConfig } from './supabase';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { heliusConnection } from './helius-api';
-
-export interface PoolConfig {
-  id: string;
-  collectionId: string;
-  collectionName: string;
-  collectionSymbol: string;
-  collectionImage: string;
-  collectionAddress: string;
-  poolAddress: string;
-  swapFee: number; // in SOL
-  createdAt: string;
-  createdBy: string;
-  isActive: boolean;
-  nftCount: number;
-  totalVolume: number;
-  description?: string;
-  poolWalletData?: {
-    publicKey: string;
-    secretKey: string;
-    hasPrivateKey: boolean;
-  };
-}
-
-export interface CollectionStats {
-  floorPrice: number;
-  totalSupply: number;
-  listedCount: number;
-  volume24h: number;
-  owners: number;
-  lastUpdated: string;
-}
 
 class PoolManager {
   private connection: Connection;
-  private pools: Map<string, PoolConfig> = new Map();
 
   constructor() {
     this.connection = heliusConnection;
-    this.loadPools();
-    this.initializeDefaultPools();
-  }
-
-  // Initialize some default pools for testing
-  private initializeDefaultPools() {
-    if (this.pools.size === 0) {
-      // Create a default SwapperCollection pool
-      const defaultPool: PoolConfig = {
-        id: 'pool_swapper-collection',
-        collectionId: 'swapper-collection',
-        collectionName: 'SwapperCollection',
-        collectionSymbol: 'SWAP',
-        collectionImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=400&fit=crop&crop=center',
-        collectionAddress: '', // Will be updated when collection is created
-        poolAddress: this.generateStaticPoolAddress('swapper-collection'),
-        swapFee: 0.05,
-        createdAt: new Date().toISOString(),
-        createdBy: 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M',
-        isActive: true,
-        nftCount: 0,
-        totalVolume: 0,
-        description: 'Official SwapperCollection pool for testing real NFT swaps on Solana devnet',
-      };
-
-      this.pools.set('swapper-collection', defaultPool);
-      this.savePools();
-    }
-  }
-
-  // Generate a deterministic pool address for consistency
-  private generateStaticPoolAddress(collectionId: string): string {
-    // Create a deterministic address based on collection ID
-    const seed = `pool_${collectionId}_${Date.now()}`;
-    const keypair = Keypair.generate();
-    return keypair.publicKey.toString();
-  }
-
-  // Load pools from localStorage
-  private loadPools() {
-    try {
-      const savedPools = localStorage.getItem('swapper_pools');
-      if (savedPools) {
-        const poolsData = JSON.parse(savedPools);
-        this.pools = new Map(Object.entries(poolsData));
-      }
-    } catch (error) {
-      console.error('Error loading pools:', error);
-    }
-  }
-
-  // Save pools to localStorage
-  private savePools() {
-    try {
-      const poolsData = Object.fromEntries(this.pools);
-      localStorage.setItem('swapper_pools', JSON.stringify(poolsData));
-    } catch (error) {
-      console.error('Error saving pools:', error);
-    }
   }
 
   // Generate a REAL Solana wallet address for the pool
@@ -106,7 +15,6 @@ class PoolManager {
     secretKey: string;
   }> {
     try {
-      // Generate a new keypair for the pool
       const poolKeypair = Keypair.generate();
       
       return {
@@ -134,7 +42,8 @@ class PoolManager {
   ): Promise<PoolConfig> {
     try {
       // Check if pool already exists
-      if (this.pools.has(collectionId)) {
+      const existingPool = await getPoolFromDB(collectionId);
+      if (existingPool) {
         throw new Error('Pool already exists for this collection');
       }
 
@@ -151,14 +60,12 @@ class PoolManager {
           hasPrivateKey: true,
         };
       } else if (poolWalletData) {
-        // Use provided wallet data
         finalPoolWalletData = {
           publicKey: poolWalletData.publicKey,
           secretKey: poolWalletData.secretKey,
           hasPrivateKey: true,
         };
       } else {
-        // Using existing address without private key
         finalPoolWalletData = {
           publicKey: finalPoolAddress,
           secretKey: '',
@@ -168,32 +75,25 @@ class PoolManager {
 
       console.log('Creating pool with address:', finalPoolAddress);
 
-      // Create pool configuration
-      const poolConfig: PoolConfig = {
-        id: `pool_${collectionId}`,
-        collectionId,
-        collectionName,
-        collectionSymbol,
-        collectionImage,
-        collectionAddress,
-        poolAddress: finalPoolAddress,
-        swapFee,
-        createdAt: new Date().toISOString(),
-        createdBy: creatorWallet,
-        isActive: true,
-        nftCount: 0,
-        totalVolume: 0,
+      // Create pool in database
+      const poolConfig = await createPool({
+        collection_id: collectionId,
+        collection_name: collectionName,
+        collection_symbol: collectionSymbol,
+        collection_image: collectionImage,
+        collection_address: collectionAddress,
+        pool_address: finalPoolAddress,
+        swap_fee: swapFee,
+        created_by: creatorWallet,
+        is_active: true,
+        nft_count: 0,
+        total_volume: 0,
         description: description || `Swap pool for ${collectionName} NFTs`,
-        poolWalletData: finalPoolWalletData,
-      };
-
-      // Save pool
-      this.pools.set(collectionId, poolConfig);
-      this.savePools();
+      });
 
       // Store wallet data securely if we have private key
       if (finalPoolWalletData?.hasPrivateKey && finalPoolWalletData.secretKey) {
-        this.storePoolWalletSecurely(finalPoolAddress, finalPoolWalletData);
+        await storePoolWallet(finalPoolAddress, finalPoolWalletData);
       }
 
       console.log('Pool created successfully:', poolConfig);
@@ -205,66 +105,32 @@ class PoolManager {
     }
   }
 
-  // Store pool wallet data securely
-  private storePoolWalletSecurely(poolAddress: string, walletData: any) {
-    try {
-      const secureData = {
-        publicKey: walletData.publicKey,
-        secretKey: walletData.secretKey,
-        createdAt: new Date().toISOString(),
-      };
-      
-      localStorage.setItem(`pool_wallet_${poolAddress}`, JSON.stringify(secureData));
-      console.log('Pool wallet data stored securely for:', poolAddress);
-    } catch (error) {
-      console.error('Error storing pool wallet data:', error);
-    }
-  }
-
-  // Get pool wallet data
-  getPoolWalletData(poolAddress: string): any {
-    try {
-      const data = localStorage.getItem(`pool_wallet_${poolAddress}`);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error('Error retrieving pool wallet data:', error);
-      return null;
-    }
-  }
-
   // Get all pools
-  getAllPools(): PoolConfig[] {
-    return Array.from(this.pools.values());
+  async getAllPools(): Promise<PoolConfig[]> {
+    return await getPoolsFromDB();
   }
 
   // Get pool by collection ID
-  getPool(collectionId: string): PoolConfig | null {
-    return this.pools.get(collectionId) || null;
+  async getPool(collectionId: string): Promise<PoolConfig | null> {
+    return await getPoolFromDB(collectionId);
   }
 
-  // Update pool stats - FIXED to properly update NFT count
-  updatePoolStats(collectionId: string, nftCount: number, volume: number = 0): boolean {
-    const pool = this.pools.get(collectionId);
-    if (!pool) return false;
-
-    console.log(`Updating pool stats for ${collectionId}: NFT count ${pool.nftCount} -> ${nftCount}`);
-    
-    pool.nftCount = nftCount;
-    if (volume > 0) {
-      pool.totalVolume += volume;
+  // Update pool stats
+  async updatePoolStats(collectionId: string, nftCount: number, volume: number = 0): Promise<boolean> {
+    try {
+      console.log(`Updating pool stats for ${collectionId}: NFT count -> ${nftCount}`);
+      await updatePoolStatsDB(collectionId, nftCount, volume);
+      console.log(`Pool stats updated successfully for ${collectionId}`);
+      return true;
+    } catch (error) {
+      console.error('Error updating pool stats:', error);
+      return false;
     }
-    
-    this.pools.set(collectionId, pool);
-    this.savePools();
-    
-    console.log(`Pool stats updated successfully for ${collectionId}`);
-    return true;
   }
 
-  // NEW: Update pool NFT count specifically
+  // Update pool NFT count specifically
   async updatePoolNFTCount(collectionId: string): Promise<number> {
     try {
-      // Import here to avoid circular dependency
       const { getPoolNFTs } = await import('./solana');
       
       console.log(`Fetching real NFT count for pool: ${collectionId}`);
@@ -272,9 +138,7 @@ class PoolManager {
       const actualCount = poolNFTs.length;
       
       console.log(`Found ${actualCount} NFTs in pool ${collectionId}`);
-      
-      // Update the pool with the actual count
-      this.updatePoolStats(collectionId, actualCount);
+      await this.updatePoolStats(collectionId, actualCount);
       
       return actualCount;
     } catch (error) {
@@ -283,13 +147,13 @@ class PoolManager {
     }
   }
 
-  // NEW: Refresh all pool NFT counts
+  // Refresh all pool NFT counts
   async refreshAllPoolCounts(): Promise<void> {
     console.log('Refreshing NFT counts for all pools...');
     
-    const pools = this.getAllPools();
+    const pools = await this.getAllPools();
     const updatePromises = pools.map(pool => 
-      this.updatePoolNFTCount(pool.collectionId)
+      this.updatePoolNFTCount(pool.collection_id)
     );
     
     try {
@@ -301,44 +165,46 @@ class PoolManager {
   }
 
   // Toggle pool active status
-  togglePoolStatus(collectionId: string): boolean {
-    const pool = this.pools.get(collectionId);
-    if (!pool) return false;
-
-    pool.isActive = !pool.isActive;
-    this.pools.set(collectionId, pool);
-    this.savePools();
-    return true;
+  async togglePoolStatus(collectionId: string): Promise<boolean> {
+    try {
+      await togglePoolStatus(collectionId);
+      return true;
+    } catch (error) {
+      console.error('Error toggling pool status:', error);
+      return false;
+    }
   }
 
   // Delete pool
-  deletePool(collectionId: string): boolean {
-    const pool = this.pools.get(collectionId);
-    if (!pool) return false;
-
-    const deleted = this.pools.delete(collectionId);
-    if (deleted) {
-      this.savePools();
-      // Also remove the wallet data
-      localStorage.removeItem(`pool_wallet_${pool.poolAddress}`);
+  async deletePool(collectionId: string): Promise<boolean> {
+    try {
+      await deletePoolFromDB(collectionId);
+      return true;
+    } catch (error) {
+      console.error('Error deleting pool:', error);
+      return false;
     }
-    return deleted;
   }
 
-  // Get pool statistics - FIXED to use actual counts
-  getPoolStats(): {
+  // Get pool statistics
+  async getPoolStats(): Promise<{
     totalPools: number;
     activePools: number;
     totalNFTs: number;
     totalVolume: number;
-  } {
-    const pools = this.getAllPools();
+  }> {
+    const pools = await this.getAllPools();
     return {
       totalPools: pools.length,
-      activePools: pools.filter(p => p.isActive).length,
-      totalNFTs: pools.reduce((sum, p) => sum + p.nftCount, 0),
-      totalVolume: pools.reduce((sum, p) => sum + p.totalVolume, 0),
+      activePools: pools.filter(p => p.is_active).length,
+      totalNFTs: pools.reduce((sum, p) => sum + p.nft_count, 0),
+      totalVolume: pools.reduce((sum, p) => sum + p.total_volume, 0),
     };
+  }
+
+  // Get pool wallet data
+  async getPoolWalletData(poolAddress: string): Promise<any> {
+    return await getPoolWalletFromDB(poolAddress);
   }
 
   // Validate collection address
@@ -360,8 +226,6 @@ class PoolManager {
   // Get collection metadata from blockchain
   async getCollectionMetadata(collectionAddress: string): Promise<any> {
     try {
-      // This would typically fetch metadata from the blockchain
-      // For now, return basic structure
       return {
         name: 'Unknown Collection',
         symbol: 'UNK',
@@ -374,22 +238,9 @@ class PoolManager {
     }
   }
 
-  // Update SwapperCollection data after creation
-  updateSwapperCollection(collectionMint: string, collectionImage?: string) {
-    const pool = this.pools.get('swapper-collection');
-    if (pool) {
-      pool.collectionAddress = collectionMint;
-      if (collectionImage) {
-        pool.collectionImage = collectionImage;
-      }
-      this.pools.set('swapper-collection', pool);
-      this.savePools();
-    }
-  }
-
   // Export pool wallet (for backup purposes)
-  exportPoolWallet(poolAddress: string): string | null {
-    const walletData = this.getPoolWalletData(poolAddress);
+  async exportPoolWallet(poolAddress: string): Promise<string | null> {
+    const walletData = await this.getPoolWalletData(poolAddress);
     if (!walletData) return null;
 
     return JSON.stringify({
@@ -401,7 +252,7 @@ class PoolManager {
   }
 
   // Import pool wallet
-  importPoolWallet(poolAddress: string, walletDataJson: string): boolean {
+  async importPoolWallet(poolAddress: string, walletDataJson: string): Promise<boolean> {
     try {
       const walletData = JSON.parse(walletDataJson);
       
@@ -413,7 +264,7 @@ class PoolManager {
         throw new Error('Public key does not match pool address');
       }
 
-      this.storePoolWalletSecurely(poolAddress, walletData);
+      await storePoolWallet(poolAddress, walletData);
       return true;
     } catch (error) {
       console.error('Error importing pool wallet:', error);
@@ -461,7 +312,5 @@ export const getPoolWalletData = (poolAddress: string) => poolManager.getPoolWal
 export const exportPoolWallet = (poolAddress: string) => poolManager.exportPoolWallet(poolAddress);
 export const importPoolWallet = (poolAddress: string, walletData: string) => 
   poolManager.importPoolWallet(poolAddress, walletData);
-
-// NEW: Export the new functions for updating NFT counts
 export const updatePoolNFTCount = (collectionId: string) => poolManager.updatePoolNFTCount(collectionId);
 export const refreshAllPoolCounts = () => poolManager.refreshAllPoolCounts();

@@ -1,61 +1,65 @@
 import { Connection, PublicKey } from '@solana/web3.js';
+import { getApiConfig } from './supabase';
 
 // Dynamic Helius API configuration that updates based on network
-const getHeliusConfig = () => {
+const getHeliusConfig = async (userWallet?: string) => {
   try {
-    const savedConfig = localStorage.getItem('swapper_api_config');
-    if (savedConfig) {
-      const config = JSON.parse(savedConfig);
-      return {
-        apiKey: config.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
-        rpcUrl: config.heliusRpc || 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
-      };
+    if (userWallet) {
+      const config = await getApiConfig(userWallet);
+      if (config) {
+        return {
+          apiKey: config.helius_api_key,
+          rpcUrl: config.helius_rpc,
+          network: config.network,
+        };
+      }
     }
   } catch (error) {
-    console.error('Error loading Helius config:', error);
+    console.error('Error loading Helius config from Supabase:', error);
   }
   
   // Default to devnet
   return {
     apiKey: 'd260d547-850c-4cb6-8412-9c764f0c9df1',
     rpcUrl: 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
+    network: 'devnet' as const,
   };
 };
 
-// Get current network from localStorage
-const getCurrentNetwork = (): 'devnet' | 'mainnet' => {
+// Get current network from Supabase or default to devnet
+const getCurrentNetwork = async (userWallet?: string): Promise<'devnet' | 'mainnet'> => {
   try {
-    const network = localStorage.getItem('swapper_network') as 'devnet' | 'mainnet';
-    return network || 'devnet';
+    if (userWallet) {
+      const config = await getApiConfig(userWallet);
+      return config?.network === 'mainnet-beta' ? 'mainnet' : 'devnet';
+    }
   } catch {
-    return 'devnet';
+    // Fallback to devnet
   }
+  return 'devnet';
 };
 
 // Dynamic Helius RPC URL that updates based on current network
-const getHeliusRpcUrl = () => {
-  const config = getHeliusConfig();
-  const network = getCurrentNetwork();
-  const networkPrefix = network === 'devnet' ? 'devnet' : 'mainnet';
-  return `https://${networkPrefix}.helius-rpc.com/?api-key=${config.apiKey}`;
+const getHeliusRpcUrl = async (userWallet?: string) => {
+  const config = await getHeliusConfig(userWallet);
+  const network = config.network === 'mainnet-beta' ? 'mainnet' : 'devnet';
+  return `https://${network}.helius-rpc.com/?api-key=${config.apiKey}`;
 };
 
 // Enhanced connection with dynamic Helius endpoint
-export const heliusConnection = new Connection(getHeliusRpcUrl(), 'confirmed');
+export const heliusConnection = new Connection('https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1', 'confirmed');
 
 // Update connection when network changes
-export const updateHeliusConnection = () => {
-  const newRpcUrl = getHeliusRpcUrl();
+export const updateHeliusConnection = async (userWallet?: string) => {
+  const newRpcUrl = await getHeliusRpcUrl(userWallet);
   console.log('Updating Helius connection to:', newRpcUrl);
-  // Note: Connection object doesn't have a direct way to update endpoint
-  // In a real implementation, you might need to recreate the connection
   return new Connection(newRpcUrl, 'confirmed');
 };
 
 // Get NFTs owned by a wallet using Helius API
-export const getWalletNFTs = async (walletAddress: string) => {
+export const getWalletNFTs = async (walletAddress: string, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     console.log('Fetching NFTs for wallet:', walletAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
@@ -84,9 +88,9 @@ export const getWalletNFTs = async (walletAddress: string) => {
     
     if (data.result && data.result.items) {
       const formattedNFTs = data.result.items
-        .filter((item: any) => item.interface === 'V1_NFT') // Only get NFTs, not tokens
+        .filter((item: any) => item.interface === 'V1_NFT')
         .map(formatHeliusNFT)
-        .filter((nft: any) => nft.image && nft.image !== '' && nft.image !== 'https://via.placeholder.com/400?text=No+Image'); // Only NFTs with valid images
+        .filter((nft: any) => nft.image && nft.image !== '' && nft.image !== 'https://via.placeholder.com/400?text=No+Image');
       
       console.log('Formatted NFTs:', formattedNFTs);
       return formattedNFTs;
@@ -100,9 +104,9 @@ export const getWalletNFTs = async (walletAddress: string) => {
 };
 
 // Get collection information using Helius API
-export const getCollectionInfo = async (collectionAddress: string) => {
+export const getCollectionInfo = async (collectionAddress: string, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
@@ -130,9 +134,9 @@ export const getCollectionInfo = async (collectionAddress: string) => {
 };
 
 // Get asset details by mint address
-export const getAssetDetails = async (mintAddress: string) => {
+export const getAssetDetails = async (mintAddress: string, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
@@ -156,13 +160,10 @@ export const getAssetDetails = async (mintAddress: string) => {
   }
 };
 
-// COMPREHENSIVE Image URL extraction function
+// Enhanced Image URL extraction function
 const extractImageFromMetadata = (metadata: any, content: any) => {
   console.log('🔍 Scanning metadata for image URLs...');
-  console.log('Metadata:', metadata);
-  console.log('Content:', content);
   
-  // List of possible image attribute names (case-insensitive)
   const imageKeys = [
     'image', 'img', 'picture', 'pic', 'photo', 'media', 'artwork', 'art',
     'imageUrl', 'image_url', 'imageUri', 'image_uri', 'mediaUrl', 'media_url',
@@ -170,26 +171,17 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
     'animation_url', 'animationUrl', 'video', 'gif', 'asset', 'file'
   ];
   
-  // Function to check if a value looks like an image URL
   const isImageUrl = (value: string) => {
     if (!value || typeof value !== 'string') return false;
     
-    // Check for image file extensions
     if (value.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff|ico)(\?.*)?$/i)) return true;
-    
-    // Check for common image hosting domains
     if (value.match(/(ipfs|arweave|cloudinary|imgur|unsplash|pexels|pixabay)/i)) return true;
-    
-    // Check for data URLs
     if (value.startsWith('data:image/')) return true;
-    
-    // Check for IPFS/Arweave protocols
     if (value.startsWith('ipfs://') || value.startsWith('ar://')) return true;
     
     return false;
   };
   
-  // Function to recursively search for image URLs in any object
   const searchForImages = (obj: any, path = ''): string[] => {
     const foundImages: string[] = [];
     
@@ -199,7 +191,6 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
       const currentPath = path ? `${path}.${key}` : key;
       
       if (typeof value === 'string') {
-        // Check if this key name suggests it might be an image
         const keyLower = key.toLowerCase();
         const isImageKey = imageKeys.some(imageKey => keyLower.includes(imageKey));
         
@@ -211,12 +202,10 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
           foundImages.push(value);
         }
       } else if (Array.isArray(value)) {
-        // Search in arrays
         value.forEach((item, index) => {
           foundImages.push(...searchForImages(item, `${currentPath}[${index}]`));
         });
       } else if (typeof value === 'object') {
-        // Recursively search in nested objects
         foundImages.push(...searchForImages(value, currentPath));
       }
     }
@@ -224,20 +213,13 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
     return foundImages;
   };
   
-  // Search for images in metadata
   const metadataImages = searchForImages(metadata, 'metadata');
-  
-  // Search for images in content
   const contentImages = searchForImages(content, 'content');
-  
-  // Combine and deduplicate
   const allImages = [...new Set([...metadataImages, ...contentImages])];
   
   console.log('🎯 All found image URLs:', allImages);
   
-  // Return the best image (prioritize by quality indicators)
   if (allImages.length > 0) {
-    // Sort by preference (higher quality indicators first)
     const sortedImages = allImages.sort((a, b) => {
       const aScore = getImageQualityScore(a);
       const bScore = getImageQualityScore(b);
@@ -251,57 +233,45 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
   return null;
 };
 
-// Function to score image quality based on URL characteristics
 const getImageQualityScore = (url: string): number => {
   let score = 0;
   
-  // Higher resolution indicators
-  if (url.match(/\d{3,4}x\d{3,4}/)) score += 10; // Contains resolution like 512x512
+  if (url.match(/\d{3,4}x\d{3,4}/)) score += 10;
   if (url.match(/(large|big|full|original|high)/i)) score += 8;
   if (url.match(/(medium|med)/i)) score += 5;
   
-  // File format preferences
   if (url.match(/\.png$/i)) score += 7;
   if (url.match(/\.jpg|\.jpeg$/i)) score += 6;
   if (url.match(/\.webp$/i)) score += 5;
   if (url.match(/\.gif$/i)) score += 4;
   if (url.match(/\.svg$/i)) score += 3;
   
-  // Hosting quality
   if (url.includes('arweave')) score += 8;
   if (url.includes('ipfs')) score += 7;
   if (url.includes('cloudinary')) score += 6;
   
-  // Avoid thumbnails and small images
   if (url.match(/(thumb|thumbnail|small|tiny|icon)/i)) score -= 5;
   
   return score;
 };
 
-// IMPROVED Format Helius NFT data to our standard format
+// Format Helius NFT data to our standard format
 const formatHeliusNFT = (asset: any) => {
   console.log('🔄 Processing asset:', asset.id);
-  console.log('Raw asset data:', asset);
   
   const metadata = asset.content?.metadata;
   const attributes = metadata?.attributes || [];
   
-  // ENHANCED IMAGE URL EXTRACTION WITH DEEP METADATA SCANNING
   let imageUrl = '';
   
-  // Method 1: Try content.files array (most reliable)
   if (asset.content?.files && asset.content.files.length > 0) {
     console.log('📁 Available files:', asset.content.files);
     
-    // Look for the best image file
     const imageFile = asset.content.files.find((file: any) => {
       const uri = file.uri || '';
       const mime = file.mime || '';
       
-      // Check MIME type first
       if (mime.startsWith('image/')) return true;
-      
-      // Check file extension
       if (uri.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) return true;
       
       return false;
@@ -311,19 +281,16 @@ const formatHeliusNFT = (asset: any) => {
       imageUrl = imageFile.uri;
       console.log('✅ Found image from files array:', imageUrl);
     } else {
-      // Fallback to first file if no specific image found
       imageUrl = asset.content.files[0]?.uri || '';
       console.log('📄 Using first file as fallback:', imageUrl);
     }
   }
   
-  // Method 2: Try metadata.image (common fallback)
   if (!imageUrl && metadata?.image) {
     imageUrl = metadata.image;
     console.log('✅ Found image from metadata.image:', imageUrl);
   }
   
-  // Method 3: DEEP SCAN - Search all metadata for any image URLs
   if (!imageUrl) {
     console.log('🔍 No image found in standard locations, performing deep scan...');
     const scannedImage = extractImageFromMetadata(metadata, asset.content);
@@ -333,13 +300,6 @@ const formatHeliusNFT = (asset: any) => {
     }
   }
   
-  // Method 4: Try content.json_uri and fetch metadata
-  if (!imageUrl && asset.content?.json_uri) {
-    console.log('🌐 Found json_uri, will need to fetch:', asset.content.json_uri);
-    // We'll handle this separately with a fetch call
-  }
-  
-  // Method 5: Check for links in content
   if (!imageUrl && asset.content?.links) {
     const imageLink = asset.content.links.image;
     if (imageLink) {
@@ -348,34 +308,28 @@ const formatHeliusNFT = (asset: any) => {
     }
   }
   
-  // HANDLE SPECIAL URL FORMATS
   if (imageUrl) {
-    // Handle IPFS URLs
     if (imageUrl.startsWith('ipfs://')) {
       imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
       console.log('🔗 Converted IPFS URL:', imageUrl);
     }
     
-    // Handle Arweave URLs
     if (imageUrl.startsWith('ar://')) {
       imageUrl = imageUrl.replace('ar://', 'https://arweave.net/');
       console.log('🔗 Converted Arweave URL:', imageUrl);
     }
     
-    // Handle relative URLs (add https if missing)
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
       console.log('🔗 Added https protocol:', imageUrl);
     }
     
-    // Handle protocol-less URLs
     if (imageUrl.match(/^[^:\/]+\.(jpg|jpeg|png|gif|webp)/i)) {
       imageUrl = 'https://' + imageUrl;
       console.log('🔗 Added https protocol to bare URL:', imageUrl);
     }
   }
   
-  // Final validation
   if (!imageUrl || imageUrl === '') {
     console.log('❌ No valid image URL found, using placeholder');
     imageUrl = 'https://via.placeholder.com/400x400/6366f1/ffffff?text=NFT';
@@ -399,10 +353,8 @@ const formatHeliusNFT = (asset: any) => {
     royalty: asset.royalty || {},
     burnt: asset.burnt || false,
     compressed: asset.compression?.compressed || false,
-    // Additional metadata for better display
     external_url: metadata?.external_url || '',
     animation_url: metadata?.animation_url || '',
-    // Raw data for debugging
     rawMetadata: metadata,
     rawContent: asset.content,
   };
@@ -412,7 +364,6 @@ const formatHeliusNFT = (asset: any) => {
 const calculateRarity = (attributes: any[]) => {
   const traitCount = attributes.length;
   
-  // More sophisticated rarity calculation
   if (traitCount >= 8) return 'Legendary';
   if (traitCount >= 6) return 'Epic';
   if (traitCount >= 4) return 'Rare';
@@ -420,9 +371,9 @@ const calculateRarity = (attributes: any[]) => {
 };
 
 // Get NFTs by collection address
-export const getNFTsByCollection = async (collectionAddress: string, limit = 50) => {
+export const getNFTsByCollection = async (collectionAddress: string, limit = 50, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     console.log('Fetching NFTs for collection:', collectionAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
@@ -463,172 +414,10 @@ export const getNFTsByCollection = async (collectionAddress: string, limit = 50)
   }
 };
 
-// ENHANCED: Fetch metadata from external URI
-export const fetchMetadataFromUri = async (uri: string) => {
-  try {
-    console.log('🌐 Fetching metadata from URI:', uri);
-    
-    // Handle IPFS URLs
-    if (uri.startsWith('ipfs://')) {
-      uri = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
-    }
-    
-    // Handle Arweave URLs
-    if (uri.startsWith('ar://')) {
-      uri = uri.replace('ar://', 'https://arweave.net/');
-    }
-    
-    const response = await fetch(uri, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    
-    if (response.ok) {
-      const metadata = await response.json();
-      console.log('✅ Fetched external metadata:', metadata);
-      
-      // Deep scan the fetched metadata for images too
-      const scannedImage = extractImageFromMetadata(metadata, null);
-      if (scannedImage) {
-        metadata.scannedImage = scannedImage;
-        console.log('🔍 Found additional image in external metadata:', scannedImage);
-      }
-      
-      return metadata;
-    }
-    
-    console.log('❌ Failed to fetch metadata, status:', response.status);
-    return null;
-  } catch (error) {
-    console.error('Error fetching metadata from URI:', error);
-    return null;
-  }
-};
-
-// ENHANCED: Get asset with external metadata fetch
-export const getAssetWithMetadata = async (mintAddress: string) => {
-  try {
-    const asset = await getAssetDetails(mintAddress);
-    if (!asset) return null;
-    
-    // If no image found and we have a json_uri, try fetching external metadata
-    if ((!asset.image || asset.image.includes('placeholder')) && asset.rawContent?.json_uri) {
-      console.log('🌐 Attempting to fetch external metadata for better image...');
-      const externalMetadata = await fetchMetadataFromUri(asset.rawContent.json_uri);
-      
-      if (externalMetadata) {
-        // Try the scanned image first, then fallback to standard image field
-        let externalImage = externalMetadata.scannedImage || externalMetadata.image;
-        
-        if (externalImage) {
-          // Handle IPFS/Arweave URLs
-          if (externalImage.startsWith('ipfs://')) {
-            externalImage = externalImage.replace('ipfs://', 'https://ipfs.io/ipfs/');
-          }
-          if (externalImage.startsWith('ar://')) {
-            externalImage = externalImage.replace('ar://', 'https://arweave.net/');
-          }
-          
-          console.log('✅ Found better image from external metadata:', externalImage);
-          asset.image = externalImage;
-        }
-        
-        // Also update other metadata if available
-        if (externalMetadata.attributes && externalMetadata.attributes.length > 0) {
-          asset.attributes = externalMetadata.attributes;
-          asset.traits = externalMetadata.attributes.length;
-          asset.rarity = calculateRarity(externalMetadata.attributes);
-        }
-        
-        if (externalMetadata.description) {
-          asset.description = externalMetadata.description;
-        }
-      }
-    }
-    
-    return asset;
-  } catch (error) {
-    console.error('Error getting asset with metadata:', error);
-    return null;
-  }
-};
-
-// Get real-time floor price data
-export const getFloorPrice = async (collectionAddress: string) => {
-  try {
-    // This would typically use a marketplace API
-    // For now, we'll return a calculated estimate
-    const collectionAssets = await getCollectionInfo(collectionAddress);
-    
-    if (collectionAssets && collectionAssets.items) {
-      // Simple floor price calculation based on collection size
-      const totalSupply = collectionAssets.total;
-      const basePrice = Math.max(0.5, Math.random() * 10); // Random between 0.5-10 SOL
-      
-      return {
-        floorPrice: basePrice,
-        totalSupply: totalSupply,
-        listedCount: Math.floor(totalSupply * 0.1), // Assume 10% listed
-      };
-    }
-    
-    return { floorPrice: 0, totalSupply: 0, listedCount: 0 };
-  } catch (error) {
-    console.error('Error calculating floor price:', error);
-    return { floorPrice: 0, totalSupply: 0, listedCount: 0 };
-  }
-};
-
-// Search for NFTs by collection
-export const searchNFTsByCollection = async (collectionAddress: string, limit = 50) => {
-  return await getNFTsByCollection(collectionAddress, limit);
-};
-
-// Get transaction history for an NFT
-export const getNFTHistory = async (mintAddress: string) => {
-  try {
-    const rpcUrl = getHeliusRpcUrl();
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'get-signatures',
-        method: 'getSignaturesForAsset',
-        params: {
-          id: mintAddress,
-          page: 1,
-          limit: 10,
-        },
-      }),
-    });
-
-    const data = await response.json();
-    return data.result || [];
-  } catch (error) {
-    console.error('Error fetching NFT history:', error);
-    return [];
-  }
-};
-
-// Validate if an address is a valid NFT collection
-export const validateCollection = async (address: string) => {
-  try {
-    const collectionInfo = await getCollectionInfo(address);
-    return collectionInfo && collectionInfo.total > 0;
-  } catch (error) {
-    console.error('Error validating collection:', error);
-    return false;
-  }
-};
-
 // Get wallet balance using Helius
-export const getWalletBalance = async (walletAddress: string) => {
+export const getWalletBalance = async (walletAddress: string, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
@@ -643,7 +432,7 @@ export const getWalletBalance = async (walletAddress: string) => {
     });
 
     const data = await response.json();
-    return data.result ? data.result.value / 1e9 : 0; // Convert lamports to SOL
+    return data.result ? data.result.value / 1e9 : 0;
   } catch (error) {
     console.error('Error fetching wallet balance:', error);
     return 0;
@@ -651,9 +440,9 @@ export const getWalletBalance = async (walletAddress: string) => {
 };
 
 // Search for specific NFT by mint address
-export const searchNFTByMint = async (mintAddress: string) => {
+export const searchNFTByMint = async (mintAddress: string, userWallet?: string) => {
   try {
-    const rpcUrl = getHeliusRpcUrl();
+    const rpcUrl = await getHeliusRpcUrl(userWallet);
     console.log('Searching for NFT by mint:', mintAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
@@ -676,12 +465,6 @@ export const searchNFTByMint = async (mintAddress: string) => {
     
     if (data.result) {
       const formattedNFT = formatHeliusNFT(data.result);
-      
-      // Try to get better metadata if needed
-      if ((!formattedNFT.image || formattedNFT.image.includes('placeholder')) && data.result.content?.json_uri) {
-        return await getAssetWithMetadata(mintAddress);
-      }
-      
       return formattedNFT;
     }
     
@@ -693,16 +476,27 @@ export const searchNFTByMint = async (mintAddress: string) => {
 };
 
 // Get current network info for display
-export const getCurrentNetworkInfo = () => {
-  const network = getCurrentNetwork();
-  const config = getHeliusConfig();
+export const getCurrentNetworkInfo = async (userWallet?: string) => {
+  const config = await getHeliusConfig(userWallet);
+  const network = await getCurrentNetwork(userWallet);
   
   return {
     network,
-    rpcUrl: getHeliusRpcUrl(),
+    rpcUrl: await getHeliusRpcUrl(userWallet),
     apiKey: config.apiKey,
     explorerUrl: network === 'devnet' 
       ? 'https://explorer.solana.com/?cluster=devnet'
       : 'https://explorer.solana.com/',
   };
+};
+
+// Validate if an address is a valid NFT collection
+export const validateCollection = async (address: string, userWallet?: string) => {
+  try {
+    const collectionInfo = await getCollectionInfo(address, userWallet);
+    return collectionInfo && collectionInfo.total > 0;
+  } catch (error) {
+    console.error('Error validating collection:', error);
+    return false;
+  }
 };

@@ -6,8 +6,8 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { getUserBalance } from '../lib/solana';
+import { getAdminSettings, getApiConfig, migrateFromLocalStorage } from '../lib/supabase';
 
-// Import wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 interface WalletContextType {
@@ -41,34 +41,67 @@ interface WalletProviderProps {
   children: ReactNode;
 }
 
-// Inner component that uses Solana wallet hooks
 const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { connected, publicKey, connect: solanaConnect, disconnect: solanaDisconnect } = useSolanaWallet();
   const [balance, setBalance] = useState(0);
   const [platformActive, setPlatformActiveState] = useState(true);
   const [maintenanceMessage, setMaintenanceMessage] = useState('Platform is currently under maintenance. Please check back later.');
   const [network, setNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');
+  const [adminSettings, setAdminSettings] = useState<any>(null);
+  const [apiConfig, setApiConfig] = useState<any>(null);
+  const [migrationCompleted, setMigrationCompleted] = useState(false);
 
-  // Admin wallet address - this should be your actual wallet address
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
 
-  // Load network preference from localStorage
+  // Load settings from Supabase when wallet connects
   useEffect(() => {
-    const savedNetwork = localStorage.getItem('swapper_network') as 'devnet' | 'mainnet-beta';
-    if (savedNetwork && (savedNetwork === 'devnet' || savedNetwork === 'mainnet-beta')) {
-      setNetwork(savedNetwork);
+    if (connected && publicKey && !migrationCompleted) {
+      loadSettingsFromSupabase();
     }
-  }, []);
+  }, [connected, publicKey, migrationCompleted]);
 
-  // Fetch balance when wallet connects or network changes
-  useEffect(() => {
-    if (connected && publicKey) {
+  const loadSettingsFromSupabase = async () => {
+    if (!publicKey) return;
+
+    try {
+      console.log('🔄 Loading settings from Supabase...');
+
+      // First, try to migrate from localStorage if needed
+      try {
+        await migrateFromLocalStorage(publicKey.toString());
+        setMigrationCompleted(true);
+        console.log('✅ Migration completed');
+      } catch (error) {
+        console.log('Migration not needed or already completed:', error);
+        setMigrationCompleted(true);
+      }
+
+      // Load admin settings
+      const settings = await getAdminSettings(publicKey.toString());
+      if (settings) {
+        setAdminSettings(settings);
+        setPlatformActiveState(settings.platform_active);
+        setMaintenanceMessage(settings.maintenance_message);
+        setNetwork(settings.network);
+        console.log('✅ Admin settings loaded from Supabase');
+      }
+
+      // Load API config
+      const config = await getApiConfig(publicKey.toString());
+      if (config) {
+        setApiConfig(config);
+        setNetwork(config.network);
+        console.log('✅ API config loaded from Supabase');
+      }
+
+      // Refresh balance
       refreshBalance();
-    } else {
-      setBalance(0);
+
+    } catch (error) {
+      console.error('Error loading settings from Supabase:', error);
     }
-  }, [connected, publicKey, network]);
+  };
 
   const refreshBalance = async () => {
     if (publicKey) {
@@ -94,6 +127,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       await solanaDisconnect();
       setBalance(0);
+      setAdminSettings(null);
+      setApiConfig(null);
+      setMigrationCompleted(false);
     } catch (error) {
       console.error('Failed to disconnect wallet:', error);
     }
@@ -110,58 +146,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     console.log('Switching network from', network, 'to', newNetwork);
     setNetwork(newNetwork);
     
-    // Save to localStorage
-    localStorage.setItem('swapper_network', newNetwork);
-    
-    // Update API configuration with CORRECT mainnet endpoints
-    updateApiEndpoints(newNetwork);
-    
-    // Refresh balance for new network
     if (connected && publicKey) {
       setTimeout(() => refreshBalance(), 1000);
     }
   };
 
-  const updateApiEndpoints = (targetNetwork: 'devnet' | 'mainnet-beta') => {
-    const apiKey = getHeliusApiKey();
-    
-    // Map mainnet-beta to mainnet for Helius API endpoints
-    const heliusNetwork = targetNetwork === 'mainnet-beta' ? 'mainnet' : 'devnet';
-    
-    // CORRECT mainnet endpoints
-    const newConfig = {
-      heliusApiKey: apiKey,
-      heliusRpc: `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`,
-      heliusParseTransactions: targetNetwork === 'devnet' 
-        ? `https://api-devnet.helius-rpc.com/v0/transactions/?api-key=${apiKey}`
-        : `https://api.helius.xyz/v0/transactions/?api-key=${apiKey}`, // CORRECT mainnet URL
-      heliusTransactionHistory: targetNetwork === 'devnet'
-        ? `https://api-devnet.helius-rpc.com/v0/addresses/{address}/transactions/?api-key=${apiKey}`
-        : `https://api.helius.xyz/v0/addresses/{address}/transactions/?api-key=${apiKey}`, // CORRECT mainnet URL
-    };
-    
-    // Update stored API configuration
-    localStorage.setItem('swapper_api_config', JSON.stringify(newConfig));
-    
-    console.log('Updated API endpoints for', targetNetwork, newConfig);
-  };
-
   const getHeliusApiKey = () => {
-    try {
-      const savedConfig = localStorage.getItem('swapper_api_config');
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        return config.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1';
-      }
-    } catch (error) {
-      console.error('Error loading API config:', error);
-    }
-    return 'd260d547-850c-4cb6-8412-9c764f0c9df1';
+    return apiConfig?.helius_api_key || adminSettings?.helius_api_key || 'd260d547-850c-4cb6-8412-9c764f0c9df1';
   };
 
   const getHeliusRpcUrl = () => {
     const apiKey = getHeliusApiKey();
-    // Map mainnet-beta to mainnet for Helius RPC URL
     const heliusNetwork = network === 'mainnet-beta' ? 'mainnet' : 'devnet';
     return `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
   };
@@ -191,52 +186,15 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 };
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  // Get network from localStorage or default to devnet
-  const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
-    const saved = localStorage.getItem('swapper_network') as 'devnet' | 'mainnet-beta';
-    return saved || 'devnet';
-  });
+  const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');
 
-  // Convert to WalletAdapterNetwork
   const network = currentNetwork === 'devnet' ? WalletAdapterNetwork.Devnet : WalletAdapterNetwork.Mainnet;
 
-  // Get Helius API key from localStorage or use default
-  const getApiKey = () => {
-    try {
-      const savedConfig = localStorage.getItem('swapper_api_config');
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        return config.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1';
-      }
-    } catch (error) {
-      console.error('Error loading API config:', error);
-    }
-    return 'd260d547-850c-4cb6-8412-9c764f0c9df1';
-  };
-
-  // Use Helius RPC endpoint based on current network
   const endpoint = useMemo(() => {
-    const apiKey = getApiKey();
-    // Map mainnet-beta to mainnet for Helius RPC URL
     const heliusNetwork = currentNetwork === 'mainnet-beta' ? 'mainnet' : 'devnet';
-    const rpcUrl = `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
+    const rpcUrl = `https://${heliusNetwork}.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1`;
     console.log('Using RPC endpoint:', rpcUrl);
     return rpcUrl;
-  }, [currentNetwork]);
-
-  // Listen for network changes
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'swapper_network' && e.newValue) {
-        const newNetwork = e.newValue as 'devnet' | 'mainnet-beta';
-        if (newNetwork !== currentNetwork) {
-          setCurrentNetwork(newNetwork);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, [currentNetwork]);
 
   const wallets = useMemo(
