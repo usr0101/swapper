@@ -63,9 +63,12 @@ export const SwapInterface: React.FC = () => {
 
   const selectedPool = availablePools.find(p => p.collection_id === selectedCollection);
 
-  // FIXED: Check swap capability using the ACTUAL pool address from the pool config
+  // FIXED: Enhanced swap capability check with better debugging
   const checkSwapCapability = async (pool: PoolConfig) => {
-    if (!pool) return false;
+    if (!pool) {
+      console.log('❌ No pool provided for swap capability check');
+      return false;
+    }
     
     console.log('🔍 Checking swap capability for pool:', pool.collection_id);
     console.log('Pool address:', pool.pool_address);
@@ -74,23 +77,47 @@ export const SwapInterface: React.FC = () => {
       // CRITICAL FIX: Use the pool address directly from the pool config
       const poolWalletData = await getPoolWalletData(pool.pool_address);
       
-      console.log('Pool wallet data found:', !!poolWalletData);
+      console.log('🔍 Pool wallet data check results:');
+      console.log('  - Wallet data found:', !!poolWalletData);
+      
       if (poolWalletData) {
-        console.log('Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-        console.log('Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
-        console.log('Has private key flag:', poolWalletData.hasPrivateKey);
+        console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
+        console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
+        console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
+        console.log('  - Public key matches:', poolWalletData.publicKey === pool.pool_address);
+        
+        // ENHANCED: More thorough validation
+        const hasValidSecretKey = poolWalletData.secretKey && 
+                                 poolWalletData.secretKey.trim() !== '' &&
+                                 poolWalletData.secretKey.length > 10; // Basic length check
+        
+        const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
+        
+        const publicKeyMatches = poolWalletData.publicKey === pool.pool_address;
+        
+        console.log('  - Valid secret key:', hasValidSecretKey);
+        console.log('  - Private key flag set:', hasPrivateKeyFlag);
+        console.log('  - Public key matches pool:', publicKeyMatches);
+        
+        // Pool has swap capability if ALL conditions are met
+        const hasCapability = hasValidSecretKey && hasPrivateKeyFlag && publicKeyMatches;
+        
+        console.log('✅ Final swap capability result:', hasCapability);
+        
+        if (!hasCapability) {
+          console.log('❌ Swap capability failed because:');
+          if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
+          if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
+          if (!publicKeyMatches) console.log('  - Public key mismatch');
+        }
+        
+        return hasCapability;
+      } else {
+        console.log('❌ No wallet data found for pool address:', pool.pool_address);
+        return false;
       }
-      
-      // Pool has swap capability if we have the private key stored
-      const hasCapability = poolWalletData && 
-                           poolWalletData.secretKey && 
-                           poolWalletData.secretKey.trim() !== '' &&
-                           poolWalletData.hasPrivateKey === true;
-      
-      console.log('✅ Final swap capability result:', hasCapability);
-      return hasCapability;
     } catch (error) {
-      console.error('Error checking swap capability:', error);
+      console.error('❌ Error checking swap capability:', error);
       return false;
     }
   };
@@ -100,7 +127,11 @@ export const SwapInterface: React.FC = () => {
   // Check swap capability when pool is selected
   useEffect(() => {
     if (selectedPool) {
-      checkSwapCapability(selectedPool).then(setHasSwapCapability);
+      console.log('🔄 Pool selected, checking swap capability...');
+      checkSwapCapability(selectedPool).then((result) => {
+        console.log('🎯 Swap capability check completed:', result);
+        setHasSwapCapability(result);
+      });
     } else {
       setHasSwapCapability(false);
     }
@@ -169,6 +200,14 @@ export const SwapInterface: React.FC = () => {
         setAvailablePools(activePools);
       } catch (error) {
         console.error('Error refreshing pools:', error);
+      }
+      
+      // ADDED: Re-check swap capability after refresh
+      if (selectedPool) {
+        console.log('🔄 Re-checking swap capability after refresh...');
+        const newCapability = await checkSwapCapability(selectedPool);
+        console.log('🎯 Updated swap capability:', newCapability);
+        setHasSwapCapability(newCapability);
       }
     }
   };
@@ -428,6 +467,11 @@ export const SwapInterface: React.FC = () => {
                     This pool cannot execute swaps because the private key is not accessible. 
                     Contact the admin to restore pool access or recreate the pool with proper wallet configuration.
                   </p>
+                  {isAdmin && (
+                    <p className="text-yellow-200 text-sm mt-2">
+                      <strong>Admin:</strong> Try recreating this pool to restore swap functionality.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

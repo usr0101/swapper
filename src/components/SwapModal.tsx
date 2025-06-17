@@ -37,30 +37,52 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   const accountCreationBuffer = 0.002; // Buffer for potential account creation
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // FIXED: Check pool access using the correct pool address from pool config
+  // FIXED: Enhanced pool access check with better debugging
   const checkPoolAccess = () => {
+    console.log('🔍 Checking pool access for swap modal...');
+    
     const pool = getPool(collectionId);
     if (!pool) {
       console.log('❌ Pool not found for collection:', collectionId);
       return false;
     }
     
-    console.log('🔍 Checking pool access for:', pool.poolAddress);
+    console.log('🔍 Pool found, checking wallet data for:', pool.poolAddress);
     const poolWalletData = getPoolWalletData(pool.poolAddress);
     
-    console.log('Pool wallet data found:', !!poolWalletData);
+    console.log('🔍 Pool wallet data check results:');
+    console.log('  - Wallet data found:', !!poolWalletData);
+    
     if (poolWalletData) {
-      console.log('Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-      console.log('Has private key flag:', poolWalletData.hasPrivateKey);
+      console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
+      console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
+      console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
+      
+      // ENHANCED: More thorough validation
+      const hasValidSecretKey = poolWalletData.secretKey && 
+                               poolWalletData.secretKey.trim() !== '' &&
+                               poolWalletData.secretKey.length > 10; // Basic length check
+      
+      const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
+      
+      console.log('  - Valid secret key:', hasValidSecretKey);
+      console.log('  - Private key flag set:', hasPrivateKeyFlag);
+      
+      const hasAccess = hasValidSecretKey && hasPrivateKeyFlag;
+      
+      console.log('✅ Final pool access result:', hasAccess);
+      
+      if (!hasAccess) {
+        console.log('❌ Pool access failed because:');
+        if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
+        if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
+      }
+      
+      return hasAccess;
+    } else {
+      console.log('❌ No wallet data found for pool');
+      return false;
     }
-    
-    const hasAccess = poolWalletData && 
-                     poolWalletData.secretKey && 
-                     poolWalletData.secretKey.trim() !== '' &&
-                     poolWalletData.hasPrivateKey === true;
-    
-    console.log('✅ Pool access result:', hasAccess);
-    return hasAccess;
   };
 
   const hasPoolAccess = checkPoolAccess();
@@ -268,7 +290,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Transaction Type</span>
                 <span className={`text-sm font-medium ${hasPoolAccess ? 'text-green-400' : 'text-red-400'}`}>
-                  {hasPoolAccess ? 'Swap' : 'Not Available'}
+                  {hasPoolAccess ? 'Atomic Swap' : 'Not Available'}
                 </span>
               </div>
               <div className="border-t border-white/10 pt-3">
@@ -300,7 +322,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                   </p>
                   <p className={`${hasPoolAccess ? 'text-green-100/80' : 'text-red-100/80'}`}>
                     {hasPoolAccess 
-                      ? 'This will execute a complete swap. Both NFTs will be verified and exchanged simultaneously. The swap fee will be sent to the configured fee collector wallet. This action cannot be undone.'
+                      ? 'This will execute a complete atomic swap. Both NFTs will be verified and exchanged simultaneously. The swap fee will be sent to the configured fee collector wallet. This action cannot be undone.'
                       : 'This pool cannot execute swaps because it lacks the necessary wallet access. Both NFTs must be exchanged simultaneously, or the transaction will not proceed.'
                     }
                   </p>
