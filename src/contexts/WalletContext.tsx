@@ -60,11 +60,18 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   
   // Platform branding state
-  const [platformName, setPlatformName] = useState('');
-  const [platformDescription, setPlatformDescription] = useState('');
-  const [platformIcon, setPlatformIcon] = useState('');
-  const [brandingLoaded, setBrandingLoaded] = useState(false);
-  const [brandingLoading, setBrandingLoading] = useState(true);
+  const [platformName, setPlatformName] = useState(() => {
+    // Load from localStorage as dynamic default, fallback to hardcoded
+    return localStorage.getItem('platform_name') || 'Swapper';
+  });
+  const [platformDescription, setPlatformDescription] = useState(() => {
+    return localStorage.getItem('platform_description') || 'Real NFT Exchange';
+  });
+  const [platformIcon, setPlatformIcon] = useState(() => {
+    return localStorage.getItem('platform_icon') || '⚡';
+  });
+  const [brandingLoaded, setBrandingLoaded] = useState(true); // Start as loaded since we have defaults
+  const [brandingLoading, setBrandingLoading] = useState(false); // No loading needed initially
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
@@ -75,19 +82,26 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     cleanupLocalStorage();
   }, []);
 
-  // CRITICAL FIX: Load platform branding from database on app start (always from database)
+  // Load platform branding from database and update defaults
   useEffect(() => {
     const loadGlobalBranding = async () => {
       try {
-        setBrandingLoading(true);
         console.log('🌍 Loading platform branding from database...');
         const branding = await getGlobalPlatformBranding();
         
         if (branding) {
           console.log('✅ Platform branding loaded from database:', branding);
+          
+          // Update current state
           setPlatformName(branding.platform_name);
           setPlatformDescription(branding.platform_description);
           setPlatformIcon(branding.platform_icon);
+          
+          // CRITICAL: Update localStorage defaults for next app load
+          localStorage.setItem('platform_name', branding.platform_name);
+          localStorage.setItem('platform_description', branding.platform_description);
+          localStorage.setItem('platform_icon', branding.platform_icon);
+          console.log('💾 Updated localStorage defaults for next app load');
           
           // Also update other platform settings if available
           if (branding.platform_active !== undefined) {
@@ -101,21 +115,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
         } else {
           console.log('⚠️ No platform branding found in database, using defaults');
-          setPlatformName('Swapper');
-          setPlatformDescription('Real NFT Exchange');
-          setPlatformIcon('⚡');
+          // Keep current defaults (from localStorage or hardcoded fallback)
         }
-        
-        setBrandingLoaded(true);
       } catch (error) {
         console.error('❌ Error loading platform branding from database:', error);
-        // Use defaults on error
-        setPlatformName('Swapper');
-        setPlatformDescription('Real NFT Exchange');
-        setPlatformIcon('⚡');
-        setBrandingLoaded(true);
-      } finally {
-        setBrandingLoading(false);
+        // Keep current defaults on error (from localStorage or hardcoded fallback)
+        console.log('Using existing defaults due to database error');
       }
     };
 
@@ -294,6 +299,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setPlatformName(name);
     setPlatformDescription(description);
     setPlatformIcon(icon);
+    
+    // CRITICAL: Update localStorage defaults immediately
+    localStorage.setItem('platform_name', name);
+    localStorage.setItem('platform_description', description);
+    localStorage.setItem('platform_icon', icon);
+    console.log('💾 Updated localStorage defaults immediately');
     
     console.log('✅ Platform branding updated in context');
   };

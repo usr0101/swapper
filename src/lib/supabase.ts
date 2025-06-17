@@ -469,7 +469,9 @@ export const cleanupLocalStorage = () => {
     key.includes('api') ||
     key.includes('wallet') ||
     key.includes('network') ||
-    key.includes('program')
+    key.includes('program') ||
+    // DON'T remove platform branding - these are our dynamic defaults
+    false // key.includes('platform_')
   );
   
   swapperKeys.forEach(key => {
@@ -486,6 +488,7 @@ export const cleanupLocalStorage = () => {
     'swapper_program_id',
     'swapper-collection.json',
     '.swapper-wallet.json'
+    // DON'T remove: 'platform_name', 'platform_description', 'platform_icon'
   ];
   
   specificKeys.forEach(key => {

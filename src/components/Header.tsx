@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
-  const { isConnected, address, isAdmin, balance, network, platformName, platformDescription, platformIcon, brandingLoaded, brandingLoading } = useWallet();
+  const { isConnected, address, isAdmin, balance, network, platformName, platformDescription, platformIcon } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const formatAddress = (addr: string) => {
@@ -17,16 +17,6 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
   };
 
   return (
-    <>
-      {/* Loading overlay while branding loads */}
-      {brandingLoading && (
-        <div className="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-        </div>
-      )}
-      
-      {/* Header content - only show when branding is loaded */}
-      {brandingLoaded && (
     <header className="border-b border-white/10 backdrop-blur-xl bg-white/5">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
@@ -225,7 +215,5 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
         )}
       </div>
     </header>
-      )}
-    </>
   );
 };
