@@ -21,6 +21,8 @@ interface WalletContextType {
   platformName: string;
   platformDescription: string;
   platformIcon: string;
+  brandingLoaded: boolean;
+  brandingLoading: boolean;
   connect: () => void;
   disconnect: () => void;
   setPlatformStatus: (active: boolean, message?: string) => void;
@@ -58,9 +60,11 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   
   // Platform branding state
-  const [platformName, setPlatformName] = useState('Swapper');
-  const [platformDescription, setPlatformDescription] = useState('Real NFT Exchange');
-  const [platformIcon, setPlatformIcon] = useState('⚡');
+  const [platformName, setPlatformName] = useState('');
+  const [platformDescription, setPlatformDescription] = useState('');
+  const [platformIcon, setPlatformIcon] = useState('');
+  const [brandingLoaded, setBrandingLoaded] = useState(false);
+  const [brandingLoading, setBrandingLoading] = useState(true);
 
   const ADMIN_ADDRESS = 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
@@ -75,6 +79,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     const loadGlobalBranding = async () => {
       try {
+        setBrandingLoading(true);
         console.log('🌍 Loading platform branding from database...');
         const branding = await getGlobalPlatformBranding();
         
@@ -96,9 +101,21 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
         } else {
           console.log('⚠️ No platform branding found in database, using defaults');
+          setPlatformName('Swapper');
+          setPlatformDescription('Real NFT Exchange');
+          setPlatformIcon('⚡');
         }
+        
+        setBrandingLoaded(true);
       } catch (error) {
         console.error('❌ Error loading platform branding from database:', error);
+        // Use defaults on error
+        setPlatformName('Swapper');
+        setPlatformDescription('Real NFT Exchange');
+        setPlatformIcon('⚡');
+        setBrandingLoaded(true);
+      } finally {
+        setBrandingLoading(false);
       }
     };
 
@@ -294,6 +311,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         platformName,
         platformDescription,
         platformIcon,
+        brandingLoaded,
+        brandingLoading,
         connect,
         disconnect,
         setPlatformStatus,
@@ -309,6 +328,14 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     </WalletContext.Provider>
   );
 };
+
+// Add loading states to context type
+interface WalletContextType {
+  // ... existing properties
+  brandingLoaded: boolean;
+  brandingLoading: boolean;
+  // ... rest of properties
+}
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>('devnet');

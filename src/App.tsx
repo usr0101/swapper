@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { SwapInterface } from './components/SwapInterface';
 import { AdminDashboard } from './components/AdminDashboard';
-import { WalletProvider } from './contexts/WalletContext';
+import { WalletProvider, useWallet } from './contexts/WalletContext';
 
 type View = 'swap' | 'admin';
 
-function App() {
+function AppContent() {
+  const { brandingLoaded, brandingLoading } = useWallet();
   const [currentView, setCurrentView] = useState<View>('swap');
 
   const renderCurrentView = () => {
@@ -19,6 +20,15 @@ function App() {
         return <SwapInterface />;
     }
   };
+
+  // Show loading screen while branding loads
+  if (brandingLoading || !brandingLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
 
   return (
     <WalletProvider>
@@ -36,5 +46,11 @@ function App() {
     </WalletProvider>
   );
 }
+
+const App = () => (
+  <WalletProvider>
+    <AppContent />
+  </WalletProvider>
+);
 
 export default App;
