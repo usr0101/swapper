@@ -7,45 +7,19 @@ node_modules/
 /dist
 /build
 
-# Environment variables - CRITICAL: Never commit these!
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Solana/Anchor
-target/
-.anchor/
-test-ledger/
-.program_id
-.admin_wallet
-
-# Wallet files - CRITICAL: Never commit private keys!
-*.json
-!package*.json
-!tsconfig*.json
-!tailwind.config.js
-!vite.config.ts
-!Anchor.toml
-.swapper-wallet.json
-swapper-collection.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+*.log
 
 # Runtime data
 pids
@@ -112,11 +86,54 @@ temp/
 .vscode/*
 !.vscode/extensions.json
 .idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Anchor specific
-programs/*/target/
+# Anchor
+.anchor
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Solana
+test-ledger/
+
+# Sensitive files
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!.vscode/*.json
+*.key
+*.pem
+.swapper-wallet.json
+swapper-collection.json
+.program_id
+.admin_wallet
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.tsbuildinfo

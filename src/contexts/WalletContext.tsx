@@ -55,7 +55,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [platformActive, setPlatformActiveState] = useState(true);
   const [maintenanceMessage, setMaintenanceMessage] = useState('Platform is currently under maintenance. Please check back later.');
   const [network, setNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
-    // SECURITY FIX: Get network from environment variable
+    // Get network from environment variable
     const envNetwork = import.meta.env.VITE_SOLANA_NETWORK;
     return (envNetwork === 'mainnet-beta') ? 'mainnet-beta' : 'devnet';
   });
@@ -66,7 +66,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
   // Platform branding state
   const [platformName, setPlatformName] = useState(() => {
-    // Start with hardcoded default, will be updated from database
     return 'Swapper';
   });
   const [platformDescription, setPlatformDescription] = useState(() => {
@@ -75,10 +74,10 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [platformIcon, setPlatformIcon] = useState(() => {
     return '⚡';
   });
-  const [brandingLoaded, setBrandingLoaded] = useState(false); // Start as not loaded
-  const [brandingLoading, setBrandingLoading] = useState(false); // No loading needed initially
+  const [brandingLoaded, setBrandingLoaded] = useState(false);
+  const [brandingLoading, setBrandingLoading] = useState(false);
 
-  // SECURITY FIX: Get admin address from environment variable
+  // Get admin address from environment variable
   const ADMIN_ADDRESS = import.meta.env.VITE_ADMIN_WALLET || 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
 
@@ -90,17 +89,14 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, []);
 
-  // ENHANCED: Immediate cleanup on component mount
+  // Immediate cleanup on component mount
   useEffect(() => {
-    // Always clean localStorage on app start
     cleanupLocalStorage();
   }, []);
 
-  // CRITICAL: Update HTML meta tags when branding changes
+  // Update HTML meta tags when branding changes
   useEffect(() => {
     if (brandingLoaded && typeof window !== 'undefined') {
-      console.log('🔄 Updating HTML meta tags with platform branding...');
-      
       // Update meta tags using the global function
       if (window.updateMetaTags) {
         window.updateMetaTags(platformName, platformDescription, platformIcon);
@@ -110,8 +106,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       window.dispatchEvent(new CustomEvent('platformBrandingUpdated', {
         detail: { platformName, platformDescription, platformIcon }
       }));
-      
-      console.log('✅ HTML meta tags updated with platform branding');
     }
   }, [platformName, platformDescription, platformIcon, brandingLoaded]);
 
@@ -120,15 +114,13 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const loadGlobalBranding = async () => {
       try {
         setBrandingLoading(true);
-        console.log('🌍 Loading platform branding from database...');
         
-        // FIRST: Try to load from localStorage as cache
+        // Try to load from localStorage as cache
         const cachedName = localStorage.getItem('platform_name');
         const cachedDescription = localStorage.getItem('platform_description');
         const cachedIcon = localStorage.getItem('platform_icon');
         
         if (cachedName && cachedDescription && cachedIcon) {
-          console.log('📦 Using cached branding while loading from database...');
           setPlatformName(cachedName);
           setPlatformDescription(cachedDescription);
           setPlatformIcon(cachedIcon);
@@ -137,8 +129,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const branding = await getGlobalPlatformBranding();
         
         if (branding) {
-          console.log('✅ Platform branding loaded from database:', branding);
-          
           // Update current state with database values
           setPlatformName(branding.platform_name);
           setPlatformDescription(branding.platform_description);
@@ -148,7 +138,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           localStorage.setItem('platform_name', branding.platform_name);
           localStorage.setItem('platform_description', branding.platform_description);
           localStorage.setItem('platform_icon', branding.platform_icon);
-          console.log('💾 Updated localStorage cache for next app load');
           
           // Also update other platform settings if available
           if (branding.platform_active !== undefined) {
@@ -161,18 +150,15 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setNetwork(branding.network);
           }
         } else {
-          console.log('⚠️ No platform branding found in database');
-          
           // If no cached values and no database values, use hardcoded defaults
           if (!cachedName || !cachedDescription || !cachedIcon) {
-            console.log('Using hardcoded defaults');
             localStorage.setItem('platform_name', 'Swapper');
             localStorage.setItem('platform_description', 'Real NFT Exchange');
             localStorage.setItem('platform_icon', '⚡');
           }
         }
       } catch (error) {
-        console.error('❌ Error loading platform branding from database:', error);
+        console.error('Error loading platform branding from database:', error);
         
         // On error, try to use cached values
         const cachedName = localStorage.getItem('platform_name');
@@ -180,12 +166,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const cachedIcon = localStorage.getItem('platform_icon');
         
         if (cachedName && cachedDescription && cachedIcon) {
-          console.log('Using cached values due to database error');
           setPlatformName(cachedName);
           setPlatformDescription(cachedDescription);
           setPlatformIcon(cachedIcon);
-        } else {
-          console.log('Using hardcoded defaults due to database error and no cache');
         }
       } finally {
         setBrandingLoaded(true);
@@ -194,7 +177,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     loadGlobalBranding();
-  }, []); // Only run once on app start
+  }, []);
 
   // Auto-reconnect wallet on page reload
   useEffect(() => {
@@ -203,20 +186,18 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         try {
           await solanaConnect();
         } catch (error) {
-          console.log('Auto-connect failed:', error);
+          // Auto-connect failed
         }
       }
     };
 
-    // Small delay to allow wallet adapter to initialize
     const timer = setTimeout(handleAutoConnect, 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  // CRITICAL FIX: Load settings immediately when wallet connects
+  // Load settings immediately when wallet connects
   useEffect(() => {
     if (connected && publicKey) {
-      console.log('🔄 Wallet connected, loading user-specific settings...');
       loadSettingsFromSupabase();
     }
   }, [connected, publicKey]);
@@ -226,10 +207,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!publicKey) return;
 
     try {
-      console.log('🔄 Loading user-specific settings from Supabase for wallet:', publicKey.toString());
-      console.log('🔄 Is admin:', isAdmin);
-
-      // ENHANCED: Always clean localStorage first
+      // Always clean localStorage first
       cleanupLocalStorage();
 
       // Try to migrate from localStorage if needed (but skip test data)
@@ -237,40 +215,27 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         try {
           await migrateFromLocalStorage(publicKey.toString());
           setMigrationCompleted(true);
-          console.log('✅ Migration completed');
         } catch (error) {
-          console.log('Migration not needed or already completed:', error);
           setMigrationCompleted(true);
         }
       }
 
       // Load admin settings (but don't override global branding unless this user has different settings)
-      console.log('📋 Loading user admin settings from Supabase...');
       const settings = await getAdminSettings(publicKey.toString());
       
       if (settings) {
-        console.log('✅ User admin settings found in Supabase');
-
         // Apply other settings
         setAdminSettings(settings);
         setPlatformActiveState(settings.platform_active);
         setMaintenanceMessage(settings.maintenance_message);
         setNetwork(settings.network);
-        
-        console.log('✅ User admin settings loaded from Supabase');
-      } else {
-        console.log('⚠️ No user admin settings found in Supabase');
       }
 
       // Load API config
-      console.log('🔧 Loading API config from Supabase...');
       const config = await getApiConfig(publicKey.toString());
       if (config) {
         setApiConfig(config);
         setNetwork(config.network);
-        console.log('✅ API config loaded from Supabase');
-      } else {
-        console.log('⚠️ No API config found in Supabase');
       }
 
       // Mark settings as loaded
@@ -280,8 +245,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       refreshBalance();
 
     } catch (error) {
-      console.error('❌ Error loading settings from Supabase:', error);
-      setSettingsLoaded(true); // Mark as loaded even if failed to prevent infinite loops
+      console.error('Error loading settings from Supabase:', error);
+      setSettingsLoaded(true);
     }
   };
 
@@ -314,8 +279,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setMigrationCompleted(false);
       setSettingsLoaded(false);
       
-      // DON'T reset platform branding - it should stay from database
-      
       // Clean up on disconnect
       cleanupLocalStorage();
     } catch (error) {
@@ -331,7 +294,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const switchNetwork = (newNetwork: 'devnet' | 'mainnet-beta') => {
-    console.log('Switching network from', network, 'to', newNetwork);
     setNetwork(newNetwork);
     
     if (connected && publicKey) {
@@ -340,7 +302,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const getHeliusApiKey = () => {
-    // SECURITY FIX: Get from environment variable first, then fallback to user config
+    // Get from environment variable first, then fallback to user config
     const envApiKey = import.meta.env.VITE_HELIUS_API_KEY;
     if (envApiKey && envApiKey !== 'your_helius_api_key_here') {
       return envApiKey;
@@ -355,10 +317,9 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
   };
 
-  // ENHANCED: Force cleanup function for admin
+  // Force cleanup function for admin
   const handleForceCleanup = async () => {
     if (isAdmin) {
-      console.log('🧹 Admin force cleanup initiated...');
       await forceCleanup();
       
       // Reload the page to ensure clean state
@@ -366,22 +327,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // CRITICAL FIX: Update platform branding and persist immediately
+  // Update platform branding and persist immediately
   const updatePlatformBranding = (name: string, description: string, icon: string) => {
-    console.log('🎨 Updating platform branding:', { name, description, icon });
-    
     // Update local state immediately
     setPlatformName(name);
     setPlatformDescription(description);
     setPlatformIcon(icon);
     
-    // CRITICAL: Update localStorage defaults immediately
+    // Update localStorage defaults immediately
     localStorage.setItem('platform_name', name);
     localStorage.setItem('platform_description', description);
     localStorage.setItem('platform_icon', icon);
-    console.log('💾 Updated localStorage defaults immediately');
-    
-    console.log('✅ Platform branding updated in context');
   };
 
   return (
@@ -416,7 +372,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 };
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  // SECURITY FIX: Get network from environment variable
+  // Get network from environment variable
   const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
     const envNetwork = import.meta.env.VITE_SOLANA_NETWORK;
     return (envNetwork === 'mainnet-beta') ? 'mainnet-beta' : 'devnet';
@@ -425,7 +381,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const network = currentNetwork === 'devnet' ? WalletAdapterNetwork.Devnet : WalletAdapterNetwork.Mainnet;
 
   const endpoint = useMemo(() => {
-    // SECURITY FIX: Use environment-specific RPC endpoints
+    // Use environment-specific RPC endpoints
     const heliusApiKey = import.meta.env.VITE_HELIUS_API_KEY;
     
     if (currentNetwork === 'mainnet-beta') {
@@ -450,9 +406,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     ],
     []
   );
-
-  console.log('🌐 Using RPC endpoint:', endpoint);
-  console.log('🔗 Network:', currentNetwork);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

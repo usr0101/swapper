@@ -39,10 +39,9 @@ export const SwapInterface: React.FC = () => {
   const [collectionStats, setCollectionStats] = useState<any>(null);
   const [availablePools, setAvailablePools] = useState<PoolConfig[]>([]);
 
-  // CRITICAL FIX: Listen for home navigation events from header
+  // Listen for home navigation events from header
   useEffect(() => {
     const handleHomeNavigation = () => {
-      console.log('🏠 Home navigation triggered from header');
       handleBackToCollections();
     };
 
@@ -78,49 +77,30 @@ export const SwapInterface: React.FC = () => {
 
   const selectedPool = availablePools.find(p => p.collection_id === selectedCollection);
 
-  // CRITICAL FIX: Use Supabase directly for wallet data check
+  // Use Supabase directly for wallet data check
   const checkSwapCapability = async (pool: PoolConfig) => {
     if (!pool) {
-      console.log('❌ No pool provided for swap capability check');
       return false;
     }
     
-    console.log('🔍 [SwapInterface] Checking swap capability for pool:', pool.collection_id);
-    console.log('Pool address:', pool.pool_address);
-    
     try {
-      // CRITICAL FIX: Use Supabase directly instead of pool manager
+      // Use Supabase directly instead of pool manager
       const poolWalletData = await getPoolWalletData(pool.pool_address);
       
-      console.log('🔍 [SwapInterface] Pool wallet data check results:');
-      console.log('  - Wallet data found:', !!poolWalletData);
-      
       if (poolWalletData) {
-        console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-        console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
-        console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
-        console.log('  - Public key matches:', poolWalletData.publicKey === pool.pool_address);
-        
-        // ENHANCED: More thorough validation
+        // More thorough validation
         const hasValidSecretKey = poolWalletData.secretKey && 
                                  poolWalletData.secretKey.trim() !== '' &&
-                                 poolWalletData.secretKey.length > 10; // Basic length check
+                                 poolWalletData.secretKey.length > 10;
         
         const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
         
         const publicKeyMatches = poolWalletData.publicKey === pool.pool_address;
         
-        console.log('  - Valid secret key:', hasValidSecretKey);
-        console.log('  - Private key flag set:', hasPrivateKeyFlag);
-        console.log('  - Public key matches pool:', publicKeyMatches);
-        
         // Pool has swap capability if ALL conditions are met
         const hasCapability = hasValidSecretKey && hasPrivateKeyFlag && publicKeyMatches;
         
-        console.log('✅ [SwapInterface] Final swap capability result:', hasCapability);
-        
         if (!hasCapability) {
-          console.log('❌ Swap capability failed because:');
           if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
           if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
           if (!publicKeyMatches) console.log('  - Public key mismatch');
@@ -128,28 +108,25 @@ export const SwapInterface: React.FC = () => {
         
         return hasCapability;
       } else {
-        console.log('❌ No wallet data found for pool address:', pool.pool_address);
         return false;
       }
     } catch (error) {
-      console.error('❌ [SwapInterface] Error checking swap capability:', error);
+      console.error('Error checking swap capability:', error);
       return false;
     }
   };
 
-  // CRITICAL FIX: Use proper loading state for swap capability
+  // Use proper loading state for swap capability
   const [hasSwapCapability, setHasSwapCapability] = useState<boolean | null>(null);
   const [checkingSwapCapability, setCheckingSwapCapability] = useState(false);
 
   // Check swap capability when pool is selected
   useEffect(() => {
     if (selectedPool) {
-      console.log('🔄 Pool selected, checking swap capability...');
       setCheckingSwapCapability(true);
-      setHasSwapCapability(null); // Reset to loading state
+      setHasSwapCapability(null);
       
       checkSwapCapability(selectedPool).then((result) => {
-        console.log('🎯 Swap capability check completed:', result);
         setHasSwapCapability(result);
         setCheckingSwapCapability(false);
       }).catch((error) => {
@@ -179,28 +156,22 @@ export const SwapInterface: React.FC = () => {
     setError('');
     
     try {
-      console.log('Loading NFTs for collection:', selectedCollection);
-      
       // Load collection stats
       const stats = await getCollectionData(selectedCollection);
       setCollectionStats(stats);
       
       // Load pool NFTs (only NFTs actually sent to the pool address)
-      console.log('Fetching NFTs from pool address...');
       const poolNFTsData = await getPoolNFTs(selectedCollection);
       setPoolNFTs(poolNFTsData);
-      console.log('Pool NFTs found:', poolNFTsData.length);
 
       // Update the pool's NFT count with the actual count
       if (poolNFTsData.length >= 0) {
-        console.log('Updating pool NFT count to:', poolNFTsData.length);
         await updatePoolStats(selectedCollection, poolNFTsData.length);
       }
 
       // Load user's NFTs
       const userNFTsData = await getUserNFTs(new PublicKey(address), selectedCollection);
       setUserNFTs(userNFTsData);
-      console.log('User NFTs found:', userNFTsData.length);
       
       if (userNFTsData.length === 0 && poolNFTsData.length === 0) {
         setError('No NFTs found. The pool is empty and you don\'t own any NFTs from this collection.');
@@ -216,7 +187,6 @@ export const SwapInterface: React.FC = () => {
 
   const handleRefresh = async () => {
     if (selectedCollection) {
-      console.log('Refreshing NFT data and updating counts...');
       await loadRealNFTs();
       
       // Force refresh the pools list to show updated counts
@@ -228,12 +198,10 @@ export const SwapInterface: React.FC = () => {
         console.error('Error refreshing pools:', error);
       }
       
-      // ADDED: Re-check swap capability after refresh
+      // Re-check swap capability after refresh
       if (selectedPool) {
-        console.log('🔄 Re-checking swap capability after refresh...');
         setCheckingSwapCapability(true);
         const newCapability = await checkSwapCapability(selectedPool);
-        console.log('🎯 Updated swap capability:', newCapability);
         setHasSwapCapability(newCapability);
         setCheckingSwapCapability(false);
       }
@@ -264,7 +232,6 @@ export const SwapInterface: React.FC = () => {
   };
 
   const handleBackToCollections = () => {
-    console.log('🔙 Navigating back to collections view');
     setSelectedCollection('');
     setSelectedPoolNFT(null);
     setSelectedUserNFT(null);
@@ -467,7 +434,7 @@ export const SwapInterface: React.FC = () => {
                   <h3 className="text-lg font-semibold text-white">{selectedPool.collection_name}</h3>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-400">
                     <span>Fee: {selectedPool.swap_fee} SOL</span>
-                    {/* CRITICAL FIX: Show loading state while checking swap capability */}
+                    {/* Show loading state while checking swap capability */}
                     {checkingSwapCapability ? (
                       <span className="text-blue-400 flex items-center space-x-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -665,7 +632,7 @@ export const SwapInterface: React.FC = () => {
                     <div className="text-sm text-gray-400 mb-4">
                       Swap Fee: <span className="text-white font-medium">{selectedPool.swap_fee} SOL</span>
                     </div>
-                    {/* CRITICAL FIX: Show loading state while checking */}
+                    {/* Show loading state while checking */}
                     {checkingSwapCapability ? (
                       <div className="text-blue-400 text-xs flex items-center justify-center space-x-1">
                         <Loader2 className="h-3 w-3 animate-spin" />

@@ -52,7 +52,6 @@ export const heliusConnection = new Connection('https://devnet.helius-rpc.com/?a
 // Update connection when network changes
 export const updateHeliusConnection = async (userWallet?: string) => {
   const newRpcUrl = await getHeliusRpcUrl(userWallet);
-  console.log('Updating Helius connection to:', newRpcUrl);
   return new Connection(newRpcUrl, 'confirmed');
 };
 
@@ -60,7 +59,6 @@ export const updateHeliusConnection = async (userWallet?: string) => {
 export const getWalletNFTs = async (walletAddress: string, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
-    console.log('Fetching NFTs for wallet:', walletAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -84,7 +82,6 @@ export const getWalletNFTs = async (walletAddress: string, userWallet?: string) 
     });
 
     const data = await response.json();
-    console.log('Helius API response:', data);
     
     if (data.result && data.result.items) {
       const formattedNFTs = data.result.items
@@ -92,7 +89,6 @@ export const getWalletNFTs = async (walletAddress: string, userWallet?: string) 
         .map(formatHeliusNFT)
         .filter((nft: any) => nft.image && nft.image !== '' && nft.image !== 'https://via.placeholder.com/400?text=No+Image');
       
-      console.log('Formatted NFTs:', formattedNFTs);
       return formattedNFTs;
     }
     
@@ -162,8 +158,6 @@ export const getAssetDetails = async (mintAddress: string, userWallet?: string) 
 
 // Enhanced Image URL extraction function
 const extractImageFromMetadata = (metadata: any, content: any) => {
-  console.log('🔍 Scanning metadata for image URLs...');
-  
   const imageKeys = [
     'image', 'img', 'picture', 'pic', 'photo', 'media', 'artwork', 'art',
     'imageUrl', 'image_url', 'imageUri', 'image_uri', 'mediaUrl', 'media_url',
@@ -195,10 +189,8 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
         const isImageKey = imageKeys.some(imageKey => keyLower.includes(imageKey));
         
         if (isImageKey && isImageUrl(value)) {
-          console.log(`📸 Found image at ${currentPath}:`, value);
           foundImages.push(value);
         } else if (isImageUrl(value)) {
-          console.log(`🖼️ Found potential image URL at ${currentPath}:`, value);
           foundImages.push(value);
         }
       } else if (Array.isArray(value)) {
@@ -217,8 +209,6 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
   const contentImages = searchForImages(content, 'content');
   const allImages = [...new Set([...metadataImages, ...contentImages])];
   
-  console.log('🎯 All found image URLs:', allImages);
-  
   if (allImages.length > 0) {
     const sortedImages = allImages.sort((a, b) => {
       const aScore = getImageQualityScore(a);
@@ -226,7 +216,6 @@ const extractImageFromMetadata = (metadata: any, content: any) => {
       return bScore - aScore;
     });
     
-    console.log('🏆 Best image selected:', sortedImages[0]);
     return sortedImages[0];
   }
   
@@ -257,16 +246,12 @@ const getImageQualityScore = (url: string): number => {
 
 // Format Helius NFT data to our standard format
 const formatHeliusNFT = (asset: any) => {
-  console.log('🔄 Processing asset:', asset.id);
-  
   const metadata = asset.content?.metadata;
   const attributes = metadata?.attributes || [];
   
   let imageUrl = '';
   
   if (asset.content?.files && asset.content.files.length > 0) {
-    console.log('📁 Available files:', asset.content.files);
-    
     const imageFile = asset.content.files.find((file: any) => {
       const uri = file.uri || '';
       const mime = file.mime || '';
@@ -279,24 +264,19 @@ const formatHeliusNFT = (asset: any) => {
     
     if (imageFile) {
       imageUrl = imageFile.uri;
-      console.log('✅ Found image from files array:', imageUrl);
     } else {
       imageUrl = asset.content.files[0]?.uri || '';
-      console.log('📄 Using first file as fallback:', imageUrl);
     }
   }
   
   if (!imageUrl && metadata?.image) {
     imageUrl = metadata.image;
-    console.log('✅ Found image from metadata.image:', imageUrl);
   }
   
   if (!imageUrl) {
-    console.log('🔍 No image found in standard locations, performing deep scan...');
     const scannedImage = extractImageFromMetadata(metadata, asset.content);
     if (scannedImage) {
       imageUrl = scannedImage;
-      console.log('✅ Found image from deep scan:', imageUrl);
     }
   }
   
@@ -304,38 +284,30 @@ const formatHeliusNFT = (asset: any) => {
     const imageLink = asset.content.links.image;
     if (imageLink) {
       imageUrl = imageLink;
-      console.log('✅ Found image from content.links:', imageUrl);
     }
   }
   
   if (imageUrl) {
     if (imageUrl.startsWith('ipfs://')) {
       imageUrl = imageUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
-      console.log('🔗 Converted IPFS URL:', imageUrl);
     }
     
     if (imageUrl.startsWith('ar://')) {
       imageUrl = imageUrl.replace('ar://', 'https://arweave.net/');
-      console.log('🔗 Converted Arweave URL:', imageUrl);
     }
     
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
-      console.log('🔗 Added https protocol:', imageUrl);
     }
     
     if (imageUrl.match(/^[^:\/]+\.(jpg|jpeg|png|gif|webp)/i)) {
       imageUrl = 'https://' + imageUrl;
-      console.log('🔗 Added https protocol to bare URL:', imageUrl);
     }
   }
   
   if (!imageUrl || imageUrl === '') {
-    console.log('❌ No valid image URL found, using placeholder');
     imageUrl = 'https://via.placeholder.com/400x400/6366f1/ffffff?text=NFT';
   }
-  
-  console.log('🎯 Final image URL:', imageUrl);
   
   return {
     id: asset.id,
@@ -374,7 +346,6 @@ const calculateRarity = (attributes: any[]) => {
 export const getNFTsByCollection = async (collectionAddress: string, limit = 50, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
-    console.log('Fetching NFTs for collection:', collectionAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -395,7 +366,6 @@ export const getNFTsByCollection = async (collectionAddress: string, limit = 50,
     });
 
     const data = await response.json();
-    console.log('Collection NFTs response:', data);
     
     if (data.result && data.result.items) {
       const formattedNFTs = data.result.items
@@ -403,7 +373,6 @@ export const getNFTsByCollection = async (collectionAddress: string, limit = 50,
         .map(formatHeliusNFT)
         .filter((nft: any) => nft.image && nft.image !== '' && !nft.image.includes('placeholder'));
       
-      console.log('Formatted collection NFTs:', formattedNFTs);
       return formattedNFTs;
     }
     
@@ -443,7 +412,6 @@ export const getWalletBalance = async (walletAddress: string, userWallet?: strin
 export const searchNFTByMint = async (mintAddress: string, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
-    console.log('Searching for NFT by mint:', mintAddress, 'using RPC:', rpcUrl);
     
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -461,7 +429,6 @@ export const searchNFTByMint = async (mintAddress: string, userWallet?: string) 
     });
 
     const data = await response.json();
-    console.log('NFT search response:', data);
     
     if (data.result) {
       const formattedNFT = formatHeliusNFT(data.result);
@@ -475,7 +442,7 @@ export const searchNFTByMint = async (mintAddress: string, userWallet?: string) 
   }
 };
 
-// FIXED: Get current network info for display with correct explorer URL format
+// Get current network info for display with correct explorer URL format
 export const getCurrentNetworkInfo = async (userWallet?: string) => {
   const config = await getHeliusConfig(userWallet);
   const network = await getCurrentNetwork(userWallet);
@@ -484,7 +451,6 @@ export const getCurrentNetworkInfo = async (userWallet?: string) => {
     network,
     rpcUrl: await getHeliusRpcUrl(userWallet),
     apiKey: config.apiKey,
-    // CRITICAL FIX: Correct Solana Explorer URL format
     explorerUrl: network === 'devnet' 
       ? 'https://explorer.solana.com'
       : 'https://explorer.solana.com',

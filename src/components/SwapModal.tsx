@@ -27,23 +27,23 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   onClose,
 }) => {
   const { refreshBalance, address } = useWallet();
-  const wallet = useSolanaWallet(); // Get the actual wallet adapter
+  const wallet = useSolanaWallet();
   const [swapStatus, setSwapStatus] = useState<SwapStatus>('pending');
   const [txData, setTxData] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [validationResult, setValidationResult] = useState<any>(null);
 
-  // ENHANCED: Calculate total cost with proper buffer for account creation
-  const networkFee = 0.0005; // Base network fee
-  const accountCreationBuffer = 0.002; // Buffer for potential account creation
+  // Calculate total cost with proper buffer for account creation
+  const networkFee = 0.0005;
+  const accountCreationBuffer = 0.002;
   const totalCost = swapFee + networkFee + accountCreationBuffer;
 
-  // CRITICAL FIX: Prevent background scrolling and fix margin-top issue
+  // Prevent background scrolling and fix margin-top issue
   useEffect(() => {
     // Store current scroll position
     const scrollY = window.scrollY;
     
-    // FIXED: Completely lock the body and remove any potential margins
+    // Completely lock the body and remove any potential margins
     const originalBodyStyle = {
       position: document.body.style.position,
       top: document.body.style.top,
@@ -78,57 +78,33 @@ export const SwapModal: React.FC<SwapModalProps> = ({
     };
   }, []);
 
-  // CRITICAL FIX: Use Supabase directly for pool access check
+  // Use Supabase directly for pool access check
   const checkPoolAccess = async () => {
-    console.log('🔍 [SwapModal] Checking pool access for swap modal...');
-    
     const pool = await getPool(collectionId);
     if (!pool) {
-      console.log('❌ Pool not found for collection:', collectionId);
       return false;
     }
     
-    console.log('🔍 [SwapModal] Pool found, checking wallet data for:', pool.pool_address);
-    
     try {
-      // CRITICAL FIX: Use Supabase directly instead of pool manager
+      // Use Supabase directly instead of pool manager
       const poolWalletData = await getPoolWalletFromSupabase(pool.pool_address);
       
-      console.log('🔍 [SwapModal] Pool wallet data check results:');
-      console.log('  - Wallet data found:', !!poolWalletData);
-      
       if (poolWalletData) {
-        console.log('  - Has secret key:', !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''));
-        console.log('  - Secret key length:', poolWalletData.secretKey ? poolWalletData.secretKey.length : 0);
-        console.log('  - Has private key flag:', poolWalletData.hasPrivateKey);
-        
-        // ENHANCED: More thorough validation
+        // More thorough validation
         const hasValidSecretKey = poolWalletData.secretKey && 
                                  poolWalletData.secretKey.trim() !== '' &&
-                                 poolWalletData.secretKey.length > 10; // Basic length check
+                                 poolWalletData.secretKey.length > 10;
         
         const hasPrivateKeyFlag = poolWalletData.hasPrivateKey === true;
         
-        console.log('  - Valid secret key:', hasValidSecretKey);
-        console.log('  - Private key flag set:', hasPrivateKeyFlag);
-        
         const hasAccess = hasValidSecretKey && hasPrivateKeyFlag;
-        
-        console.log('✅ [SwapModal] Final pool access result:', hasAccess);
-        
-        if (!hasAccess) {
-          console.log('❌ Pool access failed because:');
-          if (!hasValidSecretKey) console.log('  - Invalid or missing secret key');
-          if (!hasPrivateKeyFlag) console.log('  - hasPrivateKey flag not set to true');
-        }
         
         return hasAccess;
       } else {
-        console.log('❌ No wallet data found for pool');
         return false;
       }
     } catch (error) {
-      console.error('❌ [SwapModal] Error checking pool access:', error);
+      console.error('Error checking pool access:', error);
       return false;
     }
   };
@@ -158,9 +134,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
     setError('');
     
     try {
-      console.log('🔍 Starting swap validation...');
-      
-      // ENHANCED: Validate the transaction with proper cost calculation
+      // Validate the transaction with proper cost calculation
       const validation = await validateTransaction(new PublicKey(address), totalCost);
       setValidationResult(validation);
       
@@ -170,7 +144,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         return;
       }
       
-      console.log('✅ Validation passed, executing swap...');
       setSwapStatus('processing');
       
       // Execute the swap transaction
@@ -179,10 +152,9 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         userNFT.mint,
         poolNFT.mint,
         collectionId,
-        wallet // Pass the wallet adapter for signing
+        wallet
       );
       
-      console.log('✅ Swap executed successfully:', result);
       setTxData(result);
       setSwapStatus('success');
       
@@ -192,7 +164,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       }, 2000);
       
     } catch (err: any) {
-      console.error('❌ Swap failed:', err);
+      console.error('Swap failed:', err);
       
       // Handle specific error types
       let errorMessage = 'Swap failed';
@@ -206,13 +178,13 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       } else if (err.message.includes('Network error')) {
         errorMessage = 'Network error - please try again';
       } else if (err.message.includes('collection')) {
-        errorMessage = err.message; // Collection validation errors
+        errorMessage = err.message;
       } else if (err.message.includes('same collection')) {
         errorMessage = 'Both NFTs must be from the same verified collection';
       } else if (err.message.includes('Pool wallet access required')) {
-        errorMessage = err.message; // Pool access errors
+        errorMessage = err.message;
       } else if (err.message.includes('do not own')) {
-        errorMessage = err.message; // Ownership errors
+        errorMessage = err.message;
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -297,7 +269,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         minWidth: '100vw'
       }}
     >
-      {/* FIXED: Full viewport modal container with zero margins */}
+      {/* Full viewport modal container with zero margins */}
       <div 
         className="w-full h-full sm:h-auto sm:max-w-lg sm:max-h-[90vh] bg-gradient-to-br from-slate-800 to-slate-900 border-0 sm:border border-white/20 sm:rounded-2xl flex flex-col relative overflow-hidden"
         style={{ margin: 0, padding: 0 }}
@@ -524,7 +496,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         <div className="flex-shrink-0 p-4 sm:p-6 border-t border-white/10">
           {swapStatus === 'pending' && (
             <div className="flex space-x-3">
-              {/* ADDED: Cancel Swap button */}
               <button
                 onClick={onClose}
                 className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 rounded-xl font-medium transition-all duration-200"
