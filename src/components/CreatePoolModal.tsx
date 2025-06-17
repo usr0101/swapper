@@ -37,58 +37,29 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // GLOBAL MODAL FIX: Prevent background scrolling and fix margin-top issue
+  // IMPROVED: Better background scroll prevention that allows modal scrolling
   useEffect(() => {
     // Store current scroll position
     const scrollY = window.scrollY;
     
-    // Get the original styles
+    // Store original body styles
     const originalBodyStyle = {
       position: document.body.style.position,
       top: document.body.style.top,
-      left: document.body.style.left,
-      right: document.body.style.right,
       width: document.body.style.width,
-      height: document.body.style.height,
       overflow: document.body.style.overflow,
-      margin: document.body.style.margin,
-      padding: document.body.style.padding,
-      boxSizing: document.body.style.boxSizing,
     };
     
-    const originalHtmlStyle = {
-      margin: document.documentElement.style.margin,
-      padding: document.documentElement.style.padding,
-      overflow: document.documentElement.style.overflow,
-      height: document.documentElement.style.height,
-    };
-    
-    // Apply complete viewport lock with zero margins
+    // Apply background scroll lock while allowing modal scroll
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100vw';
-    document.body.style.height = '100vh';
+    document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.boxSizing = 'border-box';
-    
-    // Also lock the html element
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.height = '100vh';
 
     return () => {
-      // Restore all original styles
+      // Restore original body styles
       Object.entries(originalBodyStyle).forEach(([key, value]) => {
         document.body.style[key as any] = value;
-      });
-      
-      Object.entries(originalHtmlStyle).forEach(([key, value]) => {
-        document.documentElement.style[key as any] = value;
       });
       
       // Restore scroll position
@@ -391,7 +362,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({ onClose, onSub
             </div>
           </div>
 
-          {/* Modal Body */}
+          {/* Modal Body - Now properly scrollable */}
           <div className="modal-body">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* General Error */}

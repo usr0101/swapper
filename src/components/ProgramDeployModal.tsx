@@ -18,58 +18,29 @@ export const ProgramDeployModal: React.FC<ProgramDeployModalProps> = ({
   const [deployOutput, setDeployOutput] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // GLOBAL MODAL FIX: Prevent background scrolling and fix margin-top issue
+  // IMPROVED: Better background scroll prevention that allows modal scrolling
   useEffect(() => {
     // Store current scroll position
     const scrollY = window.scrollY;
     
-    // Get the original styles
+    // Store original body styles
     const originalBodyStyle = {
       position: document.body.style.position,
       top: document.body.style.top,
-      left: document.body.style.left,
-      right: document.body.style.right,
       width: document.body.style.width,
-      height: document.body.style.height,
       overflow: document.body.style.overflow,
-      margin: document.body.style.margin,
-      padding: document.body.style.padding,
-      boxSizing: document.body.style.boxSizing,
     };
     
-    const originalHtmlStyle = {
-      margin: document.documentElement.style.margin,
-      padding: document.documentElement.style.padding,
-      overflow: document.documentElement.style.overflow,
-      height: document.documentElement.style.height,
-    };
-    
-    // Apply complete viewport lock with zero margins
+    // Apply background scroll lock while allowing modal scroll
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100vw';
-    document.body.style.height = '100vh';
+    document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.boxSizing = 'border-box';
-    
-    // Also lock the html element
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.height = '100vh';
 
     return () => {
-      // Restore all original styles
+      // Restore original body styles
       Object.entries(originalBodyStyle).forEach(([key, value]) => {
         document.body.style[key as any] = value;
-      });
-      
-      Object.entries(originalHtmlStyle).forEach(([key, value]) => {
-        document.documentElement.style[key as any] = value;
       });
       
       // Restore scroll position
@@ -190,36 +161,35 @@ export const ProgramDeployModal: React.FC<ProgramDeployModalProps> = ({
             </div>
           </div>
 
-          {/* Modal Body */}
+          {/* Modal Body - Now properly scrollable */}
           <div className="modal-body">
             {deployStep === 'input' && (
               <div className="space-y-6">
                 {/* Current Program Info */}
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <h3 className="text-white font-medium mb-3">Current Program</h3>
-                  <div className="flex items-center justify-between">
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-gray-400 text-sm">Program ID</p>
-                      <p className="text-white font-mono text-sm">{currentProgramId}</p>
+                      <p className="text-sm text-gray-400 mb-2">Program ID</p>
+                      <p className="text-white font-mono text-sm bg-white/5 p-3 rounded-lg break-all">
+                        {currentProgramId}
+                      </p>
                     </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => copyToClipboard(currentProgramId)}
-                        className="p-2 hover:bg-white/10 rounded transition-colors"
-                        title="Copy current program ID"
-                      >
-                        <Copy className="h-4 w-4 text-gray-400" />
-                      </button>
-                      <a
-                        href={`https://explorer.solana.com/address/${currentProgramId}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 hover:bg-white/10 rounded transition-colors"
-                        title="View on Solana Explorer"
-                      >
-                        <ExternalLink className="h-4 w-4 text-gray-400" />
-                      </a>
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Network</p>
+                      <p className="text-white font-medium">Devnet</p>
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    <a
+                      href={`https://explorer.solana.com/address/${currentProgramId}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      <span>View on Solana Explorer</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
                   </div>
                 </div>
 
