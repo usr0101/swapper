@@ -263,7 +263,7 @@ export const SwapInterface: React.FC = () => {
   // Show maintenance message if platform is inactive
   if (!platformActive) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 px-4">
         <div className="max-w-md mx-auto">
           <div className="w-24 h-24 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="h-12 w-12 text-white" />
@@ -279,13 +279,13 @@ export const SwapInterface: React.FC = () => {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 px-4">
         <div className="max-w-md mx-auto">
           <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <ArrowRightLeft className="h-12 w-12 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h2>
-          <p className="text-gray-400 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Connect Your Wallet</h2>
+          <p className="text-gray-400 mb-6 text-sm sm:text-base">
             Connect your Solana wallet to start swapping NFTs on devnet.
           </p>
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
@@ -308,19 +308,19 @@ export const SwapInterface: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent mb-4">
+        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent mb-4">
           NFT Swap Exchange
         </h1>
-        <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+        <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto">
           {selectedCollection 
             ? `Swap your ${selectedPool?.collection_name} NFTs with a ${selectedPool?.swap_fee} SOL fee`
             : 'Choose a collection pool to start swapping NFTs on Solana devnet'
           }
         </p>
-        <div className="mt-4 flex items-center justify-center space-x-4">
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4">
           <div className="inline-flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-green-200 text-sm">Live Devnet Data via Helius API</span>
@@ -369,7 +369,7 @@ export const SwapInterface: React.FC = () => {
 
           {/* Pools Grid */}
           {filteredPools.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredPools.map(pool => {
                 return (
                   <div
@@ -386,7 +386,7 @@ export const SwapInterface: React.FC = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       
                       <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="text-2xl font-bold text-white mb-2">{pool.collection_name}</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{pool.collection_name}</h3>
                         <p className="text-gray-300 text-sm mb-3 line-clamp-2">{pool.description}</p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4 text-sm text-gray-300">
@@ -431,10 +431,10 @@ export const SwapInterface: React.FC = () => {
         /* NFT Selection View */
         <>
           {/* Back Button and Pool Info */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <button
               onClick={handleBackToCollections}
-              className="flex items-center space-x-2 text-purple-400 hover:text-purple-300 transition-colors"
+              className="flex items-center space-x-2 text-purple-400 hover:text-purple-300 transition-colors self-start"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="font-medium">Back to Pools</span>
@@ -449,7 +449,7 @@ export const SwapInterface: React.FC = () => {
                 />
                 <div>
                   <h3 className="text-lg font-semibold text-white">{selectedPool.collection_name}</h3>
-                  <div className="flex items-center space-x-3 text-sm text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-400">
                     <span>Fee: {selectedPool.swap_fee} SOL</span>
                     {/* CRITICAL FIX: Show loading state while checking swap capability */}
                     {checkingSwapCapability ? (
@@ -535,14 +535,14 @@ export const SwapInterface: React.FC = () => {
                     <strong>Admin Instructions:</strong> To add NFTs to this pool:
                   </p>
                   <div className="text-left space-y-2 text-blue-100/80 text-sm">
-                    <p>1. Send NFTs to pool address: <code className="bg-blue-500/20 px-2 py-1 rounded text-xs">{selectedPool.pool_address}</code></p>
+                    <p>1. Send NFTs to pool address: <code className="bg-blue-500/20 px-2 py-1 rounded text-xs break-all">{selectedPool.pool_address}</code></p>
                     <p>2. NFTs will automatically appear in "Available for Swap"</p>
                     <p>3. Users can then swap their NFTs with pool NFTs</p>
                   </div>
                 </div>
               )}
               
-              <div className="flex space-x-4 justify-center">
+              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
                 <button
                   onClick={handleRefresh}
                   className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
@@ -560,11 +560,11 @@ export const SwapInterface: React.FC = () => {
           ) : (
             /* Swap Interface */
             <>
-              <div className="grid lg:grid-cols-2 gap-8">
+              <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
                 {/* Pool NFTs */}
-                <div className="space-y-6">
+                <div className="space-y-4 lg:space-y-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-white">Available for Swap</h2>
+                    <h2 className="text-xl lg:text-2xl font-bold text-white">Available for Swap</h2>
                     <div className="bg-white/10 px-3 py-1 rounded-full">
                       <span className="text-sm text-gray-300">{poolNFTs.length} NFTs</span>
                     </div>
@@ -592,9 +592,9 @@ export const SwapInterface: React.FC = () => {
                 </div>
 
                 {/* User NFTs */}
-                <div className="space-y-6">
+                <div className="space-y-4 lg:space-y-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-white">Your NFTs</h2>
+                    <h2 className="text-xl lg:text-2xl font-bold text-white">Your NFTs</h2>
                     <div className="bg-white/10 px-3 py-1 rounded-full">
                       <span className="text-sm text-gray-300">{userNFTs.length} Owned</span>
                     </div>
@@ -625,7 +625,7 @@ export const SwapInterface: React.FC = () => {
               {/* Swap Action */}
               <div className="text-center space-y-4">
                 {selectedPoolNFT && selectedUserNFT && selectedPool && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 max-w-md mx-auto">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 max-w-md mx-auto">
                     <div className="flex items-center justify-between mb-4">
                       <div className="text-center">
                         <p className="text-sm text-gray-400">You Give</p>
@@ -635,7 +635,7 @@ export const SwapInterface: React.FC = () => {
                             alt={selectedUserNFT.name}
                             className="w-8 h-8 rounded-lg object-cover"
                           />
-                          <p className="font-medium text-white">{selectedUserNFT.name}</p>
+                          <p className="font-medium text-white text-sm">{selectedUserNFT.name}</p>
                         </div>
                       </div>
                       <ArrowRightLeft className={`h-6 w-6 ${hasSwapCapability === true ? 'text-green-400' : 'text-red-400'}`} />
@@ -647,7 +647,7 @@ export const SwapInterface: React.FC = () => {
                             alt={selectedPoolNFT.name}
                             className="w-8 h-8 rounded-lg object-cover"
                           />
-                          <p className="font-medium text-white">{selectedPoolNFT.name}</p>
+                          <p className="font-medium text-white text-sm">{selectedPoolNFT.name}</p>
                         </div>
                       </div>
                     </div>
@@ -677,7 +677,7 @@ export const SwapInterface: React.FC = () => {
                 <button
                   onClick={handleSwap}
                   disabled={!canSwap || checkingSwapCapability}
-                  className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 ${
+                  className={`px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-200 ${
                     canSwap && !checkingSwapCapability
                       ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                       : 'bg-gray-600 text-gray-400 cursor-not-allowed'

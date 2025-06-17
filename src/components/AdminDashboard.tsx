@@ -24,7 +24,9 @@ import {
   Type,
   Image,
   Zap,
-  Copy
+  Copy,
+  Menu,
+  X
 } from 'lucide-react';
 import { CreatePoolModal } from './CreatePoolModal';
 import { EditPoolModal } from './EditPoolModal';
@@ -55,6 +57,7 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cleaning, setCleaning] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Admin settings state
   const [adminSettings, setAdminSettings] = useState({
@@ -269,7 +272,7 @@ export const AdminDashboard: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-16">
+      <div className="text-center py-16 px-4">
         <div className="max-w-md mx-auto">
           <div className="w-24 h-24 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="h-12 w-12 text-white" />
@@ -293,26 +296,26 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
           <p className="text-gray-400 mt-1">Manage your NFT swap platform</p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
           <button
             onClick={() => setShowProgramDeploy(true)}
-            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
           >
             <Code className="h-4 w-4" />
             <span>Deploy Program</span>
           </button>
           <button
             onClick={() => setShowCreatePool(true)}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
           >
             <Plus className="h-4 w-4" />
             <span>Create Pool</span>
@@ -320,8 +323,51 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-white/10">
+      {/* Mobile Navigation Tabs */}
+      <div className="sm:hidden">
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg text-white"
+        >
+          <span className="font-medium">
+            {activeTab === 'overview' && 'Overview'}
+            {activeTab === 'pools' && 'Pools'}
+            {activeTab === 'settings' && 'Settings'}
+            {activeTab === 'deploy' && 'Deployment'}
+          </span>
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+        
+        {mobileMenuOpen && (
+          <div className="mt-2 bg-white/5 border border-white/10 rounded-lg overflow-hidden">
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart3 },
+              { id: 'pools', label: 'Pools', icon: Database },
+              { id: 'settings', label: 'Settings', icon: Settings },
+              { id: 'deploy', label: 'Deployment', icon: Upload },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id as any);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 p-4 text-left transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-purple-500/20 text-purple-400'
+                    : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Navigation Tabs */}
+      <div className="hidden sm:block border-b border-white/10">
         <nav className="flex space-x-8">
           {[
             { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -347,54 +393,54 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-200 text-sm font-medium">Total Pools</p>
-                  <p className="text-2xl font-bold text-white">{poolStats?.totalPools || 0}</p>
+                  <p className="text-blue-200 text-xs sm:text-sm font-medium">Total Pools</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{poolStats?.totalPools || 0}</p>
                 </div>
-                <Database className="h-8 w-8 text-blue-400" />
+                <Database className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-500/20 rounded-xl p-6">
+            <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-500/20 rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-200 text-sm font-medium">Active Pools</p>
-                  <p className="text-2xl font-bold text-white">{poolStats?.activePools || 0}</p>
+                  <p className="text-green-200 text-xs sm:text-sm font-medium">Active Pools</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{poolStats?.activePools || 0}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-400" />
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-400" />
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-6">
+            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-200 text-sm font-medium">Total NFTs</p>
-                  <p className="text-2xl font-bold text-white">{poolStats?.totalNFTs || 0}</p>
+                  <p className="text-purple-200 text-xs sm:text-sm font-medium">Total NFTs</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{poolStats?.totalNFTs || 0}</p>
                 </div>
-                <Users className="h-8 w-8 text-purple-400" />
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400" />
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/20 rounded-xl p-6">
+            <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-500/20 rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-200 text-sm font-medium">Total Volume</p>
-                  <p className="text-2xl font-bold text-white">{(poolStats?.totalVolume || 0).toFixed(2)} SOL</p>
+                  <p className="text-orange-200 text-xs sm:text-sm font-medium">Total Volume</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{(poolStats?.totalVolume || 0).toFixed(2)} SOL</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-orange-400" />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-orange-400" />
               </div>
             </div>
           </div>
 
           {/* Recent Pools */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Recent Pools</h3>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-white">Recent Pools</h3>
               <button
                 onClick={loadAdminData}
                 className="text-gray-400 hover:text-white transition-colors"
@@ -411,7 +457,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               ) : (
                 pools.slice(0, 5).map((pool) => (
-                  <div key={pool.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                  <div key={pool.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-white/5 rounded-lg space-y-3 sm:space-y-0">
                     <div className="flex items-center space-x-4">
                       <img
                         src={pool.collection_image}
@@ -420,11 +466,11 @@ export const AdminDashboard: React.FC = () => {
                       />
                       <div>
                         <h4 className="font-medium text-white">{pool.collection_name}</h4>
-                        <p className="text-sm text-gray-400">{pool.collection_id}</p>
+                        <p className="text-sm text-gray-400 break-all">{pool.collection_id}</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
+                      <div className="text-left sm:text-right">
                         <p className="text-sm text-gray-400">NFTs: {pool.nft_count}</p>
                         <p className="text-sm text-gray-400">Fee: {pool.swap_fee} SOL</p>
                       </div>
@@ -446,11 +492,11 @@ export const AdminDashboard: React.FC = () => {
 
       {activeTab === 'pools' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <h3 className="text-xl font-semibold text-white">Pool Management</h3>
             <button
               onClick={() => setShowCreatePool(true)}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <Plus className="h-4 w-4" />
               <span>Create Pool</span>
@@ -472,57 +518,61 @@ export const AdminDashboard: React.FC = () => {
               </div>
             ) : (
               pools.map((pool) => (
-                <div key={pool.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between">
+                <div key={pool.id} className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div className="flex items-center space-x-4">
                       <img
                         src={pool.collection_image}
                         alt={pool.collection_name}
                         className="w-16 h-16 rounded-lg object-cover"
                       />
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <h4 className="text-lg font-semibold text-white">{pool.collection_name}</h4>
-                        <p className="text-gray-400">{pool.collection_id}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-sm text-gray-500">Pool:</span>
-                          <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.pool_address)}</span>
-                          <button
-                            onClick={() => copyToClipboard(pool.pool_address)}
-                            className="p-1 hover:bg-white/10 rounded transition-colors"
-                            title="Copy pool address"
-                          >
-                            <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
-                          </button>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-sm text-gray-500">Collection:</span>
-                          <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.collection_address)}</span>
-                          <button
-                            onClick={() => copyToClipboard(pool.collection_address)}
-                            className="p-1 hover:bg-white/10 rounded transition-colors"
-                            title="Copy collection address"
-                          >
-                            <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
-                          </button>
+                        <p className="text-gray-400 break-all">{pool.collection_id}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 mt-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">Pool:</span>
+                            <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.pool_address)}</span>
+                            <button
+                              onClick={() => copyToClipboard(pool.pool_address)}
+                              className="p-1 hover:bg-white/10 rounded transition-colors"
+                              title="Copy pool address"
+                            >
+                              <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">Collection:</span>
+                            <span className="text-sm text-gray-400 font-mono">{formatAddress(pool.collection_address)}</span>
+                            <button
+                              onClick={() => copyToClipboard(pool.collection_address)}
+                              className="p-1 hover:bg-white/10 rounded transition-colors"
+                              title="Copy collection address"
+                            >
+                              <Copy className="h-3 w-3 text-gray-400 hover:text-white" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-6">
-                      <div className="text-right">
-                        <p className="text-sm text-gray-400">NFTs</p>
-                        <p className="text-lg font-semibold text-white">{pool.nft_count}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-400">Fee</p>
-                        <p className="text-lg font-semibold text-white">{pool.swap_fee} SOL</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-400">Volume</p>
-                        <p className="text-lg font-semibold text-white">{pool.total_volume.toFixed(2)} SOL</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6 space-y-4 sm:space-y-0">
+                      <div className="grid grid-cols-3 gap-4 sm:flex sm:space-x-6">
+                        <div className="text-center sm:text-right">
+                          <p className="text-sm text-gray-400">NFTs</p>
+                          <p className="text-lg font-semibold text-white">{pool.nft_count}</p>
+                        </div>
+                        <div className="text-center sm:text-right">
+                          <p className="text-sm text-gray-400">Fee</p>
+                          <p className="text-lg font-semibold text-white">{pool.swap_fee} SOL</p>
+                        </div>
+                        <div className="text-center sm:text-right">
+                          <p className="text-sm text-gray-400">Volume</p>
+                          <p className="text-lg font-semibold text-white">{pool.total_volume.toFixed(2)} SOL</p>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handleEditPool(pool)}
                           className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
@@ -563,22 +613,22 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'settings' && (
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <h3 className="text-xl font-semibold text-white">Platform Settings</h3>
             <button
               onClick={handleSaveSettings}
               disabled={saving}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <Save className="h-4 w-4" />
               <span>{saving ? 'Saving...' : 'Save Settings'}</span>
             </button>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
             {/* Platform Branding */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                 <Zap className="h-5 w-5 text-purple-400" />
                 <span>Platform Branding</span>
@@ -642,7 +692,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* General Settings */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-white mb-4">General Settings</h4>
               <div className="space-y-4">
                 <div>
@@ -653,7 +703,7 @@ export const AdminDashboard: React.FC = () => {
                     type="text"
                     value={adminSettings.feeCollectorWallet}
                     onChange={(e) => setAdminSettings(prev => ({ ...prev, feeCollectorWallet: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     placeholder="Solana wallet address"
                   />
                 </div>
@@ -708,7 +758,7 @@ export const AdminDashboard: React.FC = () => {
                     value={adminSettings.maintenanceMessage}
                     onChange={(e) => setAdminSettings(prev => ({ ...prev, maintenanceMessage: e.target.value }))}
                     rows={3}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
                     placeholder="Message shown when platform is inactive"
                   />
                 </div>
@@ -716,7 +766,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* API Configuration */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-white mb-4">API Configuration</h4>
               <div className="space-y-4">
                 <div>
@@ -728,7 +778,7 @@ export const AdminDashboard: React.FC = () => {
                       type={showApiKey ? 'text' : 'password'}
                       value={apiConfig.heliusApiKey}
                       onChange={(e) => setApiConfig(prev => ({ ...prev, heliusApiKey: e.target.value }))}
-                      className="w-full px-4 py-2 pr-12 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 pr-12 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                       placeholder="Your Helius API key"
                     />
                     <button
@@ -749,7 +799,7 @@ export const AdminDashboard: React.FC = () => {
                     type="text"
                     value={apiConfig.heliusRpc}
                     onChange={(e) => setApiConfig(prev => ({ ...prev, heliusRpc: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     placeholder="Helius RPC endpoint"
                   />
                 </div>
@@ -771,7 +821,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Cleanup Section */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                 <Trash className="h-5 w-5 text-red-400" />
                 <span>Data Management</span>
@@ -803,12 +853,12 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'deploy' && (
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <h3 className="text-xl font-semibold text-white">Program Deployment</h3>
             <button
               onClick={() => setShowProgramDeploy(true)}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
+              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <Upload className="h-4 w-4" />
               <span>Deploy New Program</span>
@@ -816,12 +866,12 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Current Program Info */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
             <h4 className="text-lg font-semibold text-white mb-4">Current Program</h4>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-gray-400 mb-2">Program ID</p>
-                <p className="text-white font-mono text-sm bg-white/5  p-3 rounded-lg">
+                <p className="text-white font-mono text-sm bg-white/5 p-3 rounded-lg break-all">
                   {getCurrentProgramId()}
                 </p>
               </div>
@@ -844,12 +894,12 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Deployment Instructions */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 sm:p-6">
             <h4 className="text-blue-200 font-semibold mb-4">📋 Deployment Instructions</h4>
             <div className="space-y-4 text-blue-100/80">
               <div>
                 <h5 className="font-medium text-blue-200 mb-2">1. Build and Deploy Your Program</h5>
-                <div className="bg-black/20 rounded-lg p-3 font-mono text-sm">
+                <div className="bg-black/20 rounded-lg p-3 font-mono text-sm overflow-x-auto">
                   <div>anchor build</div>
                   <div>anchor deploy --provider.cluster {network}</div>
                 </div>
