@@ -131,6 +131,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     loadGlobalBranding();
+  }
+  )
 
   // Auto-reconnect wallet on page reload
   useEffect(() => {
