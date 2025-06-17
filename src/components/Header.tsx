@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                   {platformName}
                 </h1>
-                {/* FIXED: Always show platform description on all screen sizes */}
+                {/* Always show platform description on all screen sizes */}
                 <p className="text-xs text-gray-400">{platformDescription}</p>
               </div>
             </button>
@@ -113,9 +113,14 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 }`}></div>
               </div>
             ) : (
-              /* FIXED: Show proper wallet button instead of "Select Wallet" text */
+              /* FIXED: Proper wallet button with smaller size for mobile */
               <div className="wallet-adapter-button-trigger">
-                <WalletMultiButton />
+                <WalletMultiButton style={{ 
+                  fontSize: '14px', 
+                  padding: '8px 16px',
+                  minHeight: 'auto',
+                  height: '36px'
+                }} />
               </div>
             )}
 
@@ -167,23 +172,18 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                 )}
               </div>
 
-              {/* Mobile Network Indicator (only when connected) */}
-              {isConnected && (
-                <div className="flex items-center space-x-2 px-3 py-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    network === 'devnet' ? 'bg-yellow-400' : 'bg-green-400'
-                  }`}></div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {network === 'devnet' ? 'Devnet' : 'Mainnet Beta'}
-                  </span>
-                </div>
-              )}
+              {/* FIXED: Remove "Devnet" text from mobile menu - only show when connected */}
+              {/* Mobile Network Indicator removed completely */}
 
-              {/* Mobile Wallet Button (if not connected) - FIXED: Remove duplicate */}
+              {/* Mobile Wallet Button (if not connected) */}
               {!isConnected && (
                 <div className="px-3">
                   <div className="wallet-adapter-button-trigger">
-                    <WalletMultiButton />
+                    <WalletMultiButton style={{ 
+                      width: '100%',
+                      fontSize: '14px',
+                      padding: '12px 16px'
+                    }} />
                   </div>
                 </div>
               )}
@@ -201,7 +201,11 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
                       </div>
                     </div>
                     <div className="wallet-adapter-button-trigger">
-                      <WalletMultiButton />
+                      <WalletMultiButton style={{ 
+                        fontSize: '12px',
+                        padding: '6px 12px',
+                        minHeight: 'auto'
+                      }} />
                     </div>
                   </div>
                 </div>
