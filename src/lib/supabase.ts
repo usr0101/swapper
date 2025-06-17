@@ -346,6 +346,54 @@ export const getAdminSettings = async (userWallet: string): Promise<AdminSetting
   return data;
 };
 
+// CRITICAL FIX: Get global platform branding from any admin user (for display when no wallet connected)
+export const getGlobalPlatformBranding = async (): Promise<{
+  platform_name: string;
+  platform_description: string;
+  platform_icon: string;
+  platform_active?: boolean;
+  maintenance_message?: string;
+  network?: 'devnet' | 'mainnet-beta';
+} | null> => {
+  try {
+    console.log('🌍 Fetching global platform branding from admin_settings...');
+    
+    // Get the most recent admin settings that have platform branding configured
+    const { data, error } = await supabase
+      .from('admin_settings')
+      .select('platform_name, platform_description, platform_icon, platform_active, maintenance_message, network')
+      .not('platform_name', 'is', null)
+      .not('platform_description', 'is', null)
+      .not('platform_icon', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching global platform branding:', error);
+      return null;
+    }
+
+    if (data) {
+      console.log('✅ Global platform branding found:', data);
+      return {
+        platform_name: data.platform_name || 'Swapper',
+        platform_description: data.platform_description || 'Real NFT Exchange',
+        platform_icon: data.platform_icon || '⚡',
+        platform_active: data.platform_active,
+        maintenance_message: data.maintenance_message,
+        network: data.network,
+      };
+    }
+
+    console.log('⚠️ No global platform branding found');
+    return null;
+  } catch (error) {
+    console.error('❌ Error in getGlobalPlatformBranding:', error);
+    return null;
+  }
+};
+
 export const saveAdminSettings = async (settings: Omit<AdminSettings, 'id' | 'created_at' | 'updated_at'>) => {
   const { data, error } = await supabase
     .from('admin_settings')
