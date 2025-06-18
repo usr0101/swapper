@@ -4,11 +4,11 @@ import { getWalletNFTs, getWalletBalance, updateHeliusConnection, searchNFTByMin
 import { getAllPools, getPool, updatePoolStats, getPoolWalletData } from './pool-manager';
 import { getAdminSettings } from './supabase';
 
-export const getConnection = () => {
+const getConnection = () => {
   return updateHeliusConnection();
 };
 
-export const connection = getConnection();
+const connection = getConnection();
 
 // Get fee collector address from Supabase admin settings
 const getFeeCollectorAddress = async (userWallet?: string) => {
@@ -412,16 +412,16 @@ export const getCollectionData = async (collectionId: string) => {
 };
 
 // Utility functions
-export const formatSOL = (lamports: number) => {
+const formatSOL = (lamports: number) => {
   return (lamports / LAMPORTS_PER_SOL).toFixed(4);
 };
 
-export const shortenAddress = (address: string, chars = 4) => {
+const shortenAddress = (address: string, chars = 4) => {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;
 };
 
 // Get explorer URL with correct format
-export const getExplorerUrl = async (signature: string, userWallet?: string) => {
+const getExplorerUrl = async (signature: string, userWallet?: string) => {
   const networkInfo = await getCurrentNetworkInfo(userWallet);
   return `${networkInfo.explorerUrl}/tx/${signature}?cluster=${networkInfo.network}`;
 };
@@ -455,7 +455,7 @@ export const validateTransaction = async (userWallet: PublicKey, requiredSOL: nu
 };
 
 // Check if pool address is valid Solana address
-export const isValidSolanaAddress = (address: string): boolean => {
+const isValidSolanaAddress = (address: string): boolean => {
   try {
     new PublicKey(address);
     return true;
@@ -476,7 +476,7 @@ export const getPoolNFTCount = async (collectionId: string): Promise<number> => 
 };
 
 // Test function to verify NFT by mint address
-export const testNFTByMint = async (mintAddress: string, userWallet?: string) => {
+const testNFTByMint = async (mintAddress: string, userWallet?: string) => {
   try {
     const nft = await searchNFTByMint(mintAddress, userWallet);
     return nft;
@@ -487,12 +487,12 @@ export const testNFTByMint = async (mintAddress: string, userWallet?: string) =>
 };
 
 // Get current network information
-export const getNetworkInfo = async (userWallet?: string) => {
+const getNetworkInfo = async (userWallet?: string) => {
   return await getCurrentNetworkInfo(userWallet);
 };
 
 // Validate fee collector address
-export const validateFeeCollectorAddress = (address: string): boolean => {
+const validateFeeCollectorAddress = (address: string): boolean => {
   try {
     new PublicKey(address);
     return true;
@@ -502,7 +502,7 @@ export const validateFeeCollectorAddress = (address: string): boolean => {
 };
 
 // Get current fee collector address
-export const getCurrentFeeCollector = async (userWallet?: string): Promise<string> => {
+const getCurrentFeeCollector = async (userWallet?: string): Promise<string> => {
   try {
     if (userWallet) {
       const adminSettings = await getAdminSettings(userWallet);
@@ -518,7 +518,7 @@ export const getCurrentFeeCollector = async (userWallet?: string): Promise<strin
 };
 
 // Enhanced transaction verification
-export const verifyTransaction = async (signature: string, userWallet?: string) => {
+const verifyTransaction = async (signature: string, userWallet?: string) => {
   try {
     const connection = await getConnection();
     const networkInfo = await getCurrentNetworkInfo(userWallet);

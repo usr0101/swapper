@@ -4,7 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Premium NFT swap platform on Solana with atomic transactions",
-  "keywords": ["solana", "nft", "swap", "blockchain", "defi", "web3"],
+  "keywords": [
+    "solana",
+    "nft",
+    "swap",
+    "blockchain",
+    "defi",
+    "web3"
+  ],
   "author": "Swapper Platform",
   "license": "MIT",
   "scripts": {
@@ -27,12 +34,10 @@
     "@solana/wallet-adapter-react-ui": "^0.9.35",
     "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/spl-token": "^0.3.9",
-    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
     "@supabase/supabase-js": "^2.39.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "bn.js": "^5.2.1"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

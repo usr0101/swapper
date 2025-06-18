@@ -309,7 +309,7 @@ class PoolManager {
 }
 
 // Export singleton instance
-export const poolManager = new PoolManager();
+const poolManager = new PoolManager();
 
 // Export utility functions (REMOVED collection symbol parameter)
 export const createNewPool = async (
@@ -342,13 +342,13 @@ export const getAllPools = () => poolManager.getAllPools();
 export const getPool = (collectionId: string) => poolManager.getPool(collectionId);
 export const updatePoolStats = (collectionId: string, nftCount: number, volume: number = 0) => 
   poolManager.updatePoolStats(collectionId, nftCount, volume);
-export const getPoolStats = () => poolManager.getPoolStats();
+const getPoolStats = () => poolManager.getPoolStats();
 
 // CRITICAL FIX: Use the pool manager's method which uses Supabase
 export const getPoolWalletData = (poolAddress: string) => poolManager.getPoolWalletData(poolAddress);
 
-export const exportPoolWallet = (poolAddress: string) => poolManager.exportPoolWallet(poolAddress);
-export const importPoolWallet = (poolAddress: string, walletData: string) => 
+const exportPoolWallet = (poolAddress: string) => poolManager.exportPoolWallet(poolAddress);
+const importPoolWallet = (poolAddress: string, walletData: string) => 
   poolManager.importPoolWallet(poolAddress, walletData);
-export const updatePoolNFTCount = (collectionId: string) => poolManager.updatePoolNFTCount(collectionId);
-export const refreshAllPoolCounts = () => poolManager.refreshAllPoolCounts();
+const updatePoolNFTCount = (collectionId: string) => poolManager.updatePoolNFTCount(collectionId);
+const refreshAllPoolCounts = () => poolManager.refreshAllPoolCounts();

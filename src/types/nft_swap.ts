@@ -227,7 +227,7 @@ export type NftSwap = {
   ]
 };
 
-export const IDL: NftSwap = {
+const IDL: NftSwap = {
   "version": "0.1.0",
   "name": "nft_swap",
   "instructions": [

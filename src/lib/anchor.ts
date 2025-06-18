@@ -4,7 +4,7 @@ import { AnchorWallet } from '@solana/wallet-adapter-react';
 import { NftSwap } from '../types/nft_swap';
 
 // UPDATED: Use your new deployed Program ID
-export let PROGRAM_ID = new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz');
+let PROGRAM_ID = new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz');
 
 // Function to update program ID (called from admin deployment)
 export const updateProgramId = (newProgramId: string) => {
@@ -66,23 +66,23 @@ const getConnection = () => {
 };
 
 // Connection to Solana cluster
-export const connection = getConnection();
+const connection = getConnection();
 
 // Get Anchor provider
-export const getProvider = (wallet: AnchorWallet) => {
+const getProvider = (wallet: AnchorWallet) => {
   return new AnchorProvider(connection, wallet, {
     commitment: 'confirmed',
   });
 };
 
 // Get program instance
-export const getProgram = (wallet: AnchorWallet) => {
+const getProgram = (wallet: AnchorWallet) => {
   const provider = getProvider(wallet);
   return new Program<NftSwap>(IDL, PROGRAM_ID, provider);
 };
 
 // Helper function to get pool PDA
-export const getPoolPDA = (collectionId: string) => {
+const getPoolPDA = (collectionId: string) => {
   return PublicKey.findProgramAddressSync(
     [Buffer.from('pool'), Buffer.from(collectionId)],
     PROGRAM_ID
@@ -90,7 +90,7 @@ export const getPoolPDA = (collectionId: string) => {
 };
 
 // Helper function to get associated token account
-export const getAssociatedTokenAccount = async (
+const getAssociatedTokenAccount = async (
   mint: PublicKey,
   owner: PublicKey
 ) => {
@@ -102,7 +102,7 @@ export const getAssociatedTokenAccount = async (
 export const getCurrentProgramId = () => PROGRAM_ID.toString();
 
 // Get current network
-export const getCurrentNetwork = () => import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+const getCurrentNetwork = () => import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
 
 // Validate environment configuration
 export const validateEnvironment = () => {

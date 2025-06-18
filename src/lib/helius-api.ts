@@ -100,7 +100,7 @@ export const getWalletNFTs = async (walletAddress: string, userWallet?: string) 
 };
 
 // Get collection information using Helius API
-export const getCollectionInfo = async (collectionAddress: string, userWallet?: string) => {
+const getCollectionInfo = async (collectionAddress: string, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
     const response = await fetch(rpcUrl, {
@@ -130,7 +130,7 @@ export const getCollectionInfo = async (collectionAddress: string, userWallet?: 
 };
 
 // Get asset details by mint address
-export const getAssetDetails = async (mintAddress: string, userWallet?: string) => {
+const getAssetDetails = async (mintAddress: string, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
     const response = await fetch(rpcUrl, {
@@ -343,7 +343,7 @@ const calculateRarity = (attributes: any[]) => {
 };
 
 // Get NFTs by collection address
-export const getNFTsByCollection = async (collectionAddress: string, limit = 50, userWallet?: string) => {
+const getNFTsByCollection = async (collectionAddress: string, limit = 50, userWallet?: string) => {
   try {
     const rpcUrl = await getHeliusRpcUrl(userWallet);
     
@@ -458,7 +458,7 @@ export const getCurrentNetworkInfo = async (userWallet?: string) => {
 };
 
 // Validate if an address is a valid NFT collection
-export const validateCollection = async (address: string, userWallet?: string) => {
+const validateCollection = async (address: string, userWallet?: string) => {
   try {
     const collectionInfo = await getCollectionInfo(address, userWallet);
     return collectionInfo && collectionInfo.total > 0;

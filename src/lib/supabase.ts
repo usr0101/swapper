@@ -27,7 +27,7 @@ export interface PoolConfig {
   description?: string;
 }
 
-export interface PoolWallet {
+interface PoolWallet {
   id: string;
   pool_address: string;
   public_key: string;
@@ -36,7 +36,7 @@ export interface PoolWallet {
   created_at: string;
 }
 
-export interface AdminSettings {
+interface AdminSettings {
   id: string;
   user_wallet: string;
   fee_collector_wallet: string;
@@ -52,7 +52,7 @@ export interface AdminSettings {
   platform_icon?: string;
 }
 
-export interface ApiConfig {
+interface ApiConfig {
   id: string;
   user_wallet: string;
   helius_api_key: string;
@@ -502,7 +502,7 @@ export const cleanupLocalStorage = () => {
 };
 
 // ENHANCED: Remove any default/test pools from database
-export const removeTestPools = async () => {
+const removeTestPools = async () => {
   try {
     console.log('🧹 Removing test pools from database...');
     
