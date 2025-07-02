@@ -44,7 +44,7 @@ import {
   forceCleanup,
   PoolConfig 
 } from '../lib/supabase';
-import { updateProgramId, getCurrentProgramId } from '../lib/anchor';
+import { getCurrentProgramId } from '../lib/anchor';
 
 export const AdminDashboard: React.FC = () => {
   const { address, isAdmin, network, switchNetwork, forceCleanup: contextForceCleanup, platformName, platformDescription, platformIcon, updatePlatformBranding } = useWallet();
@@ -322,12 +322,14 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleProgramDeploy = (newProgramId: string) => {
-    // Update the program ID in the frontend
-    const success = updateProgramId(newProgramId);
-    if (success) {
-      setShowProgramDeploy(false);
-      console.log('✅ Program deployment completed');
-    }
+    // SECURITY FIX: No longer update program ID at runtime
+    // Instead, provide instructions to user for manual update
+    setShowProgramDeploy(false);
+    
+    // Show instructions to user
+    alert(`Program deployment completed!\n\nTo use the new program ID (${newProgramId}):\n\n1. Update VITE_PROGRAM_ID in your .env file\n2. Restart the application\n\nThe program ID cannot be changed at runtime for security reasons.`);
+    
+    console.log('✅ Program deployment modal completed - user instructed to update .env file');
   };
 
   // ENHANCED: Force cleanup handler
@@ -1001,8 +1003,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
               
               <div>
-                <h5 className="font-medium text-blue-200 mb-2">3. Update Frontend</h5>
-                <p className="text-sm">Click "Deploy New Program" above and paste the new Program ID</p>
+                <h5 className="font-medium text-blue-200 mb-2">3. Update Environment Configuration</h5>
+                <p className="text-sm">Update VITE_PROGRAM_ID in your .env file and restart the application</p>
               </div>
               
               <div>
