@@ -33,7 +33,32 @@ export type NftSwap = {
       ]
     },
     {
-      "name": "depositNft",
+      "name": "updatePoolStats",
+      "accounts": [
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "nftCount",
+          "type": "u32"
+        },
+        {
+          "name": "volume",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "depositSol",
       "accounts": [
         {
           "name": "pool",
@@ -46,29 +71,56 @@ export type NftSwap = {
           "isSigner": true
         },
         {
-          "name": "userNftAccount",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawSol",
+      "accounts": [
+        {
+          "name": "pool",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "poolNftAccount",
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "createSwapOrder",
+      "accounts": [
+        {
+          "name": "swapOrder",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "nftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -80,11 +132,17 @@ export type NftSwap = {
         {
           "name": "nftMint",
           "type": "publicKey"
+        },
+        {
+          "name": "desiredTraits",
+          "type": {
+            "vec": "string"
+          }
         }
       ]
     },
     {
-      "name": "swapNft",
+      "name": "executeSwap",
       "accounts": [
         {
           "name": "pool",
@@ -92,34 +150,14 @@ export type NftSwap = {
           "isSigner": false
         },
         {
+          "name": "swapOrder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "user",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "userNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userNewNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "poolNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tempPoolAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userTokenAccount",
-          "isMut": true,
-          "isSigner": false
         },
         {
           "name": "feeCollector",
@@ -127,26 +165,6 @@ export type NftSwap = {
           "isSigner": false
         },
         {
-          "name": "userNftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "poolNftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -154,12 +172,8 @@ export type NftSwap = {
       ],
       "args": [
         {
-          "name": "userNftMint",
-          "type": "publicKey"
-        },
-        {
-          "name": "poolNftMint",
-          "type": "publicKey"
+          "name": "swapFee",
+          "type": "u64"
         }
       ]
     }
@@ -196,6 +210,190 @@ export type NftSwap = {
           }
         ]
       }
+    },
+    {
+      "name": "SwapOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "desiredTraits",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "PoolInitialized",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "collectionId",
+          "type": "string"
+        },
+        {
+          "name": "swapFee",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "PoolStatsUpdated",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "oldNftCount",
+          "type": "u32"
+        },
+        {
+          "name": "newNftCount",
+          "type": "u32"
+        },
+        {
+          "name": "volumeAdded",
+          "type": "u64"
+        },
+        {
+          "name": "totalVolume",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SolDeposited",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SolWithdrawn",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SwapOrderCreated",
+      "fields": [
+        {
+          "name": "swapOrder",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "nftMint",
+          "type": "publicKey"
+        },
+        {
+          "name": "desiredTraits",
+          "type": {
+            "vec": "string"
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SwapExecuted",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "swapOrder",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "feeCollector",
+          "type": "publicKey"
+        },
+        {
+          "name": "swapFee",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
     }
   ],
   "errors": [
@@ -211,18 +409,53 @@ export type NftSwap = {
     },
     {
       "code": 6002,
-      "name": "InvalidNft",
-      "msg": "Invalid NFT"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation"
     },
     {
       "code": 6003,
-      "name": "PoolNotFound",
-      "msg": "Pool not found"
+      "name": "InvalidCollectionId",
+      "msg": "Collection ID must be between 1 and 32 characters"
     },
     {
       "code": 6004,
-      "name": "InvalidCollectionId",
-      "msg": "Collection ID must be 15 characters or less"
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow occurred"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount - must be greater than 0"
+    },
+    {
+      "code": 6006,
+      "name": "AmountTooLarge",
+      "msg": "Amount too large - maximum 100 SOL"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientRentExemption",
+      "msg": "Account would not be rent exempt"
+    },
+    {
+      "code": 6008,
+      "name": "TooManyTraits",
+      "msg": "Too many traits - maximum 10 allowed"
+    },
+    {
+      "code": 6009,
+      "name": "TraitNameTooLong",
+      "msg": "Trait name too long - maximum 50 characters"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidFeeCollector",
+      "msg": "Invalid fee collector account"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidFeeAmount",
+      "msg": "Invalid fee amount - must match pool requirements"
     }
   ]
 };
@@ -262,7 +495,32 @@ const IDL: NftSwap = {
       ]
     },
     {
-      "name": "depositNft",
+      "name": "updatePoolStats",
+      "accounts": [
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "nftCount",
+          "type": "u32"
+        },
+        {
+          "name": "volume",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "depositSol",
       "accounts": [
         {
           "name": "pool",
@@ -275,29 +533,56 @@ const IDL: NftSwap = {
           "isSigner": true
         },
         {
-          "name": "userNftAccount",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawSol",
+      "accounts": [
+        {
+          "name": "pool",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "poolNftAccount",
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "createSwapOrder",
+      "accounts": [
+        {
+          "name": "swapOrder",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "nftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "systemProgram",
@@ -309,11 +594,17 @@ const IDL: NftSwap = {
         {
           "name": "nftMint",
           "type": "publicKey"
+        },
+        {
+          "name": "desiredTraits",
+          "type": {
+            "vec": "string"
+          }
         }
       ]
     },
     {
-      "name": "swapNft",
+      "name": "executeSwap",
       "accounts": [
         {
           "name": "pool",
@@ -321,34 +612,14 @@ const IDL: NftSwap = {
           "isSigner": false
         },
         {
+          "name": "swapOrder",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "user",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "userNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userNewNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "poolNftAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tempPoolAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userTokenAccount",
-          "isMut": true,
-          "isSigner": false
         },
         {
           "name": "feeCollector",
@@ -356,26 +627,6 @@ const IDL: NftSwap = {
           "isSigner": false
         },
         {
-          "name": "userNftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "poolNftMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "associatedTokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -383,12 +634,8 @@ const IDL: NftSwap = {
       ],
       "args": [
         {
-          "name": "userNftMint",
-          "type": "publicKey"
-        },
-        {
-          "name": "poolNftMint",
-          "type": "publicKey"
+          "name": "swapFee",
+          "type": "u64"
         }
       ]
     }
@@ -425,6 +672,190 @@ const IDL: NftSwap = {
           }
         ]
       }
+    },
+    {
+      "name": "SwapOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "desiredTraits",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "PoolInitialized",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "collectionId",
+          "type": "string"
+        },
+        {
+          "name": "swapFee",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "PoolStatsUpdated",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "oldNftCount",
+          "type": "u32"
+        },
+        {
+          "name": "newNftCount",
+          "type": "u32"
+        },
+        {
+          "name": "volumeAdded",
+          "type": "u64"
+        },
+        {
+          "name": "totalVolume",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SolDeposited",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SolWithdrawn",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SwapOrderCreated",
+      "fields": [
+        {
+          "name": "swapOrder",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "nftMint",
+          "type": "publicKey"
+        },
+        {
+          "name": "desiredTraits",
+          "type": {
+            "vec": "string"
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "SwapExecuted",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey"
+        },
+        {
+          "name": "swapOrder",
+          "type": "publicKey"
+        },
+        {
+          "name": "user",
+          "type": "publicKey"
+        },
+        {
+          "name": "feeCollector",
+          "type": "publicKey"
+        },
+        {
+          "name": "swapFee",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp",
+          "type": "i64"
+        }
+      ]
     }
   ],
   "errors": [
@@ -440,18 +871,55 @@ const IDL: NftSwap = {
     },
     {
       "code": 6002,
-      "name": "InvalidNft",
-      "msg": "Invalid NFT"
+      "name": "InvalidOperation",
+      "msg": "Invalid operation"
     },
     {
       "code": 6003,
-      "name": "PoolNotFound",
-      "msg": "Pool not found"
+      "name": "InvalidCollectionId",
+      "msg": "Collection ID must be between 1 and 32 characters"
     },
     {
       "code": 6004,
-      "name": "InvalidCollectionId",
-      "msg": "Collection ID must be 15 characters or less"
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow occurred"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount - must be greater than 0"
+    },
+    {
+      "code": 6006,
+      "name": "AmountTooLarge",
+      "msg": "Amount too large - maximum 100 SOL"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientRentExemption",
+      "msg": "Account would not be rent exempt"
+    },
+    {
+      "code": 6008,
+      "name": "TooManyTraits",
+      "msg": "Too many traits - maximum 10 allowed"
+    },
+    {
+      "code": 6009,
+      "name": "TraitNameTooLong",
+      "msg": "Trait name too long - maximum 50 characters"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidFeeCollector",
+      "msg": "Invalid fee collector account"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidFeeAmount",
+      "msg": "Invalid fee amount - must match pool requirements"
     }
   ]
 };
+
+export default IDL;
