@@ -3,52 +3,48 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 import { NftSwap } from '../types/nft_swap';
 
-// UPDATED: Use your new deployed Program ID
-let PROGRAM_ID = new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz');
+// SECURITY FIX: Immutable Program ID - no runtime updates allowed
+const PROGRAM_IDS = {
+  devnet: new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz'),
+  'mainnet-beta': new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz'), // Replace with actual mainnet ID
+  localnet: new PublicKey('A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz')
+} as const;
 
-// Function to update program ID (called from admin deployment)
-export const updateProgramId = (newProgramId: string) => {
-  try {
-    PROGRAM_ID = new PublicKey(newProgramId);
-    console.log('✅ Program ID updated to:', newProgramId);
-    
-    // Store in localStorage for persistence (not sensitive data)
-    localStorage.setItem('swapper_program_id', newProgramId);
-    
-    return true;
-  } catch (error) {
-    console.error('❌ Failed to update program ID:', error);
-    return false;
+// SECURITY FIX: Get Program ID based on environment, no runtime mutation
+const getProgramId = (): PublicKey => {
+  const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+  
+  if (network in PROGRAM_IDS) {
+    return PROGRAM_IDS[network as keyof typeof PROGRAM_IDS];
   }
+  
+  console.warn(`Unknown network: ${network}, falling back to devnet`);
+  return PROGRAM_IDS.devnet;
 };
 
-// Load program ID from localStorage on startup (fallback)
-const loadStoredProgramId = () => {
-  try {
-    const storedId = localStorage.getItem('swapper_program_id');
-    if (storedId && storedId !== 'A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz') {
-      PROGRAM_ID = new PublicKey(storedId);
-      console.log('📋 Loaded stored program ID:', storedId);
-    }
-  } catch (error) {
-    console.error('Error loading stored program ID:', error);
-  }
-};
+// SECURITY FIX: Remove mutable program ID functions
+// These functions have been removed to prevent runtime program ID injection:
+// - updateProgramId()
+// - loadStoredProgramId()
 
-// Initialize on module load
-loadStoredProgramId();
-
-// SECURITY FIX: Dynamic connection based on environment
+// SECURITY FIX: Dynamic connection based on environment with proper validation
 const getConnection = () => {
   const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+  
+  // Validate network value
+  if (!['devnet', 'mainnet-beta', 'localnet'].includes(network)) {
+    console.error(`Invalid network: ${network}`);
+    throw new Error('Invalid network configuration');
+  }
   
   // Use environment-specific RPC endpoints
   if (network === 'mainnet-beta') {
     // For mainnet, use a reliable RPC provider
-    return new Connection(
-      import.meta.env.VITE_MAINNET_RPC_URL || clusterApiUrl('mainnet-beta'),
-      'confirmed'
-    );
+    const mainnetRpc = import.meta.env.VITE_MAINNET_RPC_URL;
+    if (mainnetRpc && !mainnetRpc.includes('your_')) {
+      return new Connection(mainnetRpc, 'confirmed');
+    }
+    return new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
   } else if (network === 'devnet') {
     // For devnet, use Helius or fallback to public RPC
     const heliusKey = import.meta.env.VITE_HELIUS_API_KEY;
@@ -78,14 +74,22 @@ const getProvider = (wallet: AnchorWallet) => {
 // Get program instance
 const getProgram = (wallet: AnchorWallet) => {
   const provider = getProvider(wallet);
-  return new Program<NftSwap>(IDL, PROGRAM_ID, provider);
+  return new Program<NftSwap>(IDL, getProgramId(), provider);
 };
 
 // Helper function to get pool PDA
 const getPoolPDA = (collectionId: string) => {
   return PublicKey.findProgramAddressSync(
     [Buffer.from('pool'), Buffer.from(collectionId)],
-    PROGRAM_ID
+    getProgramId()
+  );
+};
+
+// Helper function to get swap order PDA
+const getSwapOrderPDA = (user: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('swap_order'), user.toBuffer()],
+    getProgramId()
   );
 };
 
@@ -98,19 +102,24 @@ const getAssociatedTokenAccount = async (
   return await getAssociatedTokenAddress(mint, owner);
 };
 
-// Get current program ID
-export const getCurrentProgramId = () => PROGRAM_ID.toString();
+// Get current program ID (read-only)
+export const getCurrentProgramId = () => getProgramId().toString();
 
 // Get current network
 const getCurrentNetwork = () => import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
 
-// Validate environment configuration
+// SECURITY FIX: Enhanced environment validation
 export const validateEnvironment = () => {
   const issues = [];
   
   const programId = getCurrentProgramId();
   if (!programId || programId === '11111111111111111111111111111111') {
     issues.push('Program ID not properly set');
+  }
+  
+  const network = getCurrentNetwork();
+  if (!['devnet', 'mainnet-beta', 'localnet'].includes(network)) {
+    issues.push('Invalid VITE_SOLANA_NETWORK value');
   }
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -136,6 +145,9 @@ export const validateEnvironment = () => {
   
   return issues.length === 0;
 };
+
+// Export helper functions
+export { getProgram, getProvider, getPoolPDA, getSwapOrderPDA, getAssociatedTokenAccount };
 
 // Updated IDL for the deployed program
 const IDL = {
@@ -242,10 +254,80 @@ const IDL = {
       }
     }
   ],
+  "events": [
+    {
+      "name": "PoolInitialized",
+      "fields": [
+        { "name": "pool", "type": "publicKey" },
+        { "name": "authority", "type": "publicKey" },
+        { "name": "collectionId", "type": "string" },
+        { "name": "swapFee", "type": "u64" },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "PoolStatsUpdated",
+      "fields": [
+        { "name": "pool", "type": "publicKey" },
+        { "name": "oldNftCount", "type": "u32" },
+        { "name": "newNftCount", "type": "u32" },
+        { "name": "volumeAdded", "type": "u64" },
+        { "name": "totalVolume", "type": "u64" },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "SolDeposited",
+      "fields": [
+        { "name": "pool", "type": "publicKey" },
+        { "name": "user", "type": "publicKey" },
+        { "name": "amount", "type": "u64" },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "SolWithdrawn",
+      "fields": [
+        { "name": "pool", "type": "publicKey" },
+        { "name": "authority", "type": "publicKey" },
+        { "name": "amount", "type": "u64" },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "SwapOrderCreated",
+      "fields": [
+        { "name": "swapOrder", "type": "publicKey" },
+        { "name": "user", "type": "publicKey" },
+        { "name": "nftMint", "type": "publicKey" },
+        { "name": "desiredTraits", "type": { "vec": "string" } },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "SwapExecuted",
+      "fields": [
+        { "name": "pool", "type": "publicKey" },
+        { "name": "swapOrder", "type": "publicKey" },
+        { "name": "user", "type": "publicKey" },
+        { "name": "feeCollector", "type": "publicKey" },
+        { "name": "swapFee", "type": "u64" },
+        { "name": "timestamp", "type": "i64" }
+      ]
+    }
+  ],
   "errors": [
     { "code": 6000, "name": "Unauthorized", "msg": "Unauthorized access" },
     { "code": 6001, "name": "InsufficientFunds", "msg": "Insufficient funds" },
     { "code": 6002, "name": "InvalidOperation", "msg": "Invalid operation" },
-    { "code": 6003, "name": "InvalidCollectionId", "msg": "Collection ID must be 32 characters or less" }
+    { "code": 6003, "name": "InvalidCollectionId", "msg": "Collection ID must be between 1 and 32 characters" },
+    { "code": 6004, "name": "ArithmeticOverflow", "msg": "Arithmetic overflow occurred" },
+    { "code": 6005, "name": "InvalidAmount", "msg": "Invalid amount - must be greater than 0" },
+    { "code": 6006, "name": "AmountTooLarge", "msg": "Amount too large - maximum 100 SOL" },
+    { "code": 6007, "name": "InsufficientRentExemption", "msg": "Account would not be rent exempt" },
+    { "code": 6008, "name": "TooManyTraits", "msg": "Too many traits - maximum 10 allowed" },
+    { "code": 6009, "name": "TraitNameTooLong", "msg": "Trait name too long - maximum 50 characters" },
+    { "code": 6010, "name": "InvalidFeeCollector", "msg": "Invalid fee collector account" },
+    { "code": 6011, "name": "InvalidFeeAmount", "msg": "Invalid fee amount - must match pool requirements" }
   ]
 };
