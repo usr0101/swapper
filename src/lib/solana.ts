@@ -553,7 +553,7 @@ const verifyTransaction = async (signature: string, userWallet?: string) => {
       exists: false,
       success: false,
       signature,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error.message,
     };
   }
 };
