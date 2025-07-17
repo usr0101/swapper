@@ -1,7 +1,14 @@
 import { supabase, createPool, getAllPools as getPoolsFromDB, getPool as getPoolFromDB, updatePoolStats as updatePoolStatsDB, togglePoolStatus, deletePool as deletePoolFromDB, storePoolWallet, getPoolWalletData as getPoolWalletFromDB, PoolConfig } from './supabase';
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
+import { heliusConnection } from './helius-api';
 
 class PoolManager {
+  private connection: Connection;
+
+  constructor() {
+    this.connection = heliusConnection;
+  }
+
   // Generate a REAL Solana wallet address for the pool
   private async generatePoolAddress(): Promise<{
     publicKey: string;
@@ -20,7 +27,7 @@ class PoolManager {
     }
   }
 
-  // Create a new pool for a collection
+  // Create a new pool for a collection (REMOVED collection symbol parameter)
   async createPool(
     collectionId: string,
     collectionName: string,
@@ -53,12 +60,19 @@ class PoolManager {
           hasPrivateKey: true,
         };
       } else if (poolWalletData) {
+        // CRITICAL FIX: Ensure the wallet data structure is correct
         finalPoolWalletData = {
           publicKey: poolWalletData.publicKey || poolAddress,
           secretKey: poolWalletData.secretKey || '',
           hasPrivateKey: !!(poolWalletData.secretKey && poolWalletData.secretKey.trim() !== ''),
         };
         
+        console.log('🔐 Pool wallet data prepared:', {
+          publicKey: finalPoolWalletData.publicKey,
+          hasSecretKey: !!(finalPoolWalletData.secretKey && finalPoolWalletData.secretKey.trim() !== ''),
+          hasPrivateKey: finalPoolWalletData.hasPrivateKey,
+          secretKeyLength: finalPoolWalletData.secretKey ? finalPoolWalletData.secretKey.length : 0,
+        });
       } else {
         finalPoolWalletData = {
           publicKey: finalPoolAddress,
@@ -67,7 +81,10 @@ class PoolManager {
         };
       }
 
-      // Create pool in database
+      console.log('Creating pool with address:', finalPoolAddress);
+      console.log('Pool will have swap capability:', finalPoolWalletData?.hasPrivateKey);
+
+      // Create pool in database (REMOVED collection_symbol)
       const poolConfig = await createPool({
         collection_id: collectionId,
         collection_name: collectionName,
@@ -83,14 +100,24 @@ class PoolManager {
         description: description || `Swap pool for ${collectionName} NFTs`,
       });
 
-      // Store wallet data
+      // CRITICAL FIX: Always store wallet data, even if no private key
+      console.log('💾 Storing pool wallet data...');
       await storePoolWallet(finalPoolAddress, finalPoolWalletData);
       
       // Verify the wallet data was stored correctly
       const storedWalletData = await getPoolWalletFromDB(finalPoolAddress);
+      console.log('✅ Wallet data verification:', {
+        stored: !!storedWalletData,
+        hasSecretKey: !!(storedWalletData?.secretKey && storedWalletData.secretKey.trim() !== ''),
+        hasPrivateKey: storedWalletData?.hasPrivateKey,
+        publicKeyMatches: storedWalletData?.publicKey === finalPoolAddress,
+      });
+
+      console.log('Pool created successfully:', poolConfig);
       return poolConfig;
 
     } catch (error) {
+      console.error('Error creating pool:', error);
       throw error;
     }
   }
@@ -108,7 +135,9 @@ class PoolManager {
   // Update pool stats
   async updatePoolStats(collectionId: string, nftCount: number, volume: number = 0): Promise<boolean> {
     try {
+      console.log(`Updating pool stats for ${collectionId}: NFT count -> ${nftCount}`);
       await updatePoolStatsDB(collectionId, nftCount, volume);
+      console.log(`Pool stats updated successfully for ${collectionId}`);
       return true;
     } catch (error) {
       console.error('Error updating pool stats:', error);
@@ -121,9 +150,11 @@ class PoolManager {
     try {
       const { getPoolNFTs } = await import('./solana');
       
+      console.log(`Fetching real NFT count for pool: ${collectionId}`);
       const poolNFTs = await getPoolNFTs(collectionId);
       const actualCount = poolNFTs.length;
       
+      console.log(`Found ${actualCount} NFTs in pool ${collectionId}`);
       await this.updatePoolStats(collectionId, actualCount);
       
       return actualCount;
@@ -135,6 +166,7 @@ class PoolManager {
 
   // Refresh all pool NFT counts
   async refreshAllPoolCounts(): Promise<void> {
+    console.log('Refreshing NFT counts for all pools...');
     
     const pools = await this.getAllPools();
     const updatePromises = pools.map(pool => 
@@ -143,7 +175,9 @@ class PoolManager {
     
     try {
       await Promise.all(updatePromises);
+      console.log('All pool NFT counts refreshed successfully');
     } catch (error) {
+      console.error('Error refreshing pool counts:', error);
     }
   }
 
@@ -185,14 +219,25 @@ class PoolManager {
     };
   }
 
+  // CRITICAL FIX: Use Supabase directly instead of local storage
   async getPoolWalletData(poolAddress: string): Promise<any> {
+    console.log('🔍 [PoolManager] Retrieving wallet data for pool:', poolAddress);
     
     try {
       // FIXED: Always use Supabase, never local storage
       const walletData = await getPoolWalletFromDB(poolAddress);
       
+      console.log('🔍 [PoolManager] Wallet data retrieval results:', {
+        found: !!walletData,
+        hasSecretKey: !!(walletData?.secretKey && walletData.secretKey.trim() !== ''),
+        hasPrivateKey: walletData?.hasPrivateKey,
+        publicKeyMatches: walletData?.publicKey === poolAddress,
+        secretKeyLength: walletData?.secretKey ? walletData.secretKey.length : 0,
+      });
+      
       return walletData;
     } catch (error) {
+      console.error('❌ [PoolManager] Error retrieving wallet data:', error);
       return null;
     }
   }
@@ -208,6 +253,7 @@ class PoolManager {
       const accountInfo = await this.connection.getAccountInfo(pubkey);
       return accountInfo !== null;
     } catch (error) {
+      console.error('Invalid collection address:', error);
       return false;
     }
   }
@@ -256,6 +302,7 @@ class PoolManager {
       await storePoolWallet(poolAddress, walletData);
       return true;
     } catch (error) {
+      console.error('Error importing pool wallet:', error);
       return false;
     }
   }
@@ -264,6 +311,7 @@ class PoolManager {
 // Export singleton instance
 const poolManager = new PoolManager();
 
+// Export utility functions (REMOVED collection symbol parameter)
 export const createNewPool = async (
   collectionId: string,
   collectionName: string,
@@ -279,7 +327,7 @@ export const createNewPool = async (
   return await poolManager.createPool(
     collectionId,
     collectionName,
-    '',
+    '', // Always pass empty string for collection symbol
     collectionImage,
     collectionAddress,
     creatorWallet,
@@ -296,6 +344,7 @@ export const updatePoolStats = (collectionId: string, nftCount: number, volume: 
   poolManager.updatePoolStats(collectionId, nftCount, volume);
 const getPoolStats = () => poolManager.getPoolStats();
 
+// CRITICAL FIX: Use the pool manager's method which uses Supabase
 export const getPoolWalletData = (poolAddress: string) => poolManager.getPoolWalletData(poolAddress);
 
 const exportPoolWallet = (poolAddress: string) => poolManager.exportPoolWallet(poolAddress);
