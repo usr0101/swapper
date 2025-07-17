@@ -9,7 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Database types
 export interface PoolConfig {
   id: string;
   collection_id: string;
@@ -151,19 +150,14 @@ export const updatePoolStats = async (collectionId: string, nftCount: number, vo
 
   if (error) throw error;
 
-  // If there's volume, call the RPC separately to increment it
   if (volumeInSOL > 0) {
-    // Convert SOL to lamports (multiply by 10^9) and round to ensure integer
     const volumeInLamports = Math.round(volumeInSOL * 1_000_000_000);
-    
-    console.log(`💰 Adding volume: ${volumeInSOL} SOL (${volumeInLamports} lamports) to pool ${collectionId}`);
     
     const { error: rpcError } = await supabase.rpc('increment_volume', { 
       pool_id: collectionId, 
       amount: volumeInLamports 
     });
     if (rpcError) {
-      console.error('Error calling increment_volume RPC:', rpcError);
     }
   }
   
@@ -214,7 +208,6 @@ export const deletePool = async (collectionId: string) => {
   if (error) throw error;
 };
 
-// Pool wallet operations (encrypted storage)
 const encryptSecretKey = (secretKey: string): string => {
   // Simple base64 encoding for now - in production, use proper encryption
   return btoa(secretKey);
@@ -230,30 +223,12 @@ export const storePoolWallet = async (poolAddress: string, walletData: {
   secretKey: string;
   hasPrivateKey: boolean;
 }) => {
-  console.log('💾 Storing pool wallet in Supabase:', {
-    poolAddress,
-    publicKey: walletData.publicKey,
-    hasSecretKey: !!(walletData.secretKey && walletData.secretKey.trim() !== ''),
-    hasPrivateKey: walletData.hasPrivateKey,
-    secretKeyLength: walletData.secretKey ? walletData.secretKey.length : 0,
-  });
-
-  // CRITICAL FIX: Ensure we have valid data before storing
   if (!walletData.publicKey || !poolAddress) {
     throw new Error('Invalid wallet data: missing public key or pool address');
   }
 
-  // CRITICAL FIX: Ensure hasPrivateKey is correctly set
   const hasValidSecretKey = walletData.secretKey && walletData.secretKey.trim() !== '';
   const finalHasPrivateKey = hasValidSecretKey && walletData.hasPrivateKey === true;
-
-  console.log('💾 Final wallet data being stored:', {
-    poolAddress,
-    publicKey: walletData.publicKey,
-    hasValidSecretKey,
-    originalHasPrivateKey: walletData.hasPrivateKey,
-    finalHasPrivateKey,
-  });
 
   const { data, error } = await supabase
     .from('pool_wallets')
@@ -269,17 +244,13 @@ export const storePoolWallet = async (poolAddress: string, walletData: {
     .single();
 
   if (error) {
-    console.error('❌ Error storing pool wallet:', error);
     throw error;
   }
 
-  console.log('✅ Pool wallet stored successfully in Supabase');
   return data;
 };
 
 export const getPoolWalletData = async (poolAddress: string) => {
-  console.log('🔍 Retrieving pool wallet from Supabase for:', poolAddress);
-
   const { data, error } = await supabase
     .from('pool_wallets')
     .select('*')
@@ -287,30 +258,17 @@ export const getPoolWalletData = async (poolAddress: string) => {
     .maybeSingle();
 
   if (error) {
-    console.error('❌ Error retrieving pool wallet from Supabase:', error);
     throw error;
   }
   
   if (data) {
-    console.log('🔍 Raw Supabase wallet data:', {
-      found: true,
-      pool_address: data.pool_address,
-      public_key: data.public_key,
-      has_private_key: data.has_private_key,
-      has_encrypted_secret_key: !!(data.encrypted_secret_key && data.encrypted_secret_key.trim() !== ''),
-    });
-
-    // CRITICAL FIX: Properly decrypt and validate the secret key
     let decryptedSecretKey = '';
     try {
       if (data.encrypted_secret_key && data.encrypted_secret_key.trim() !== '') {
         decryptedSecretKey = decryptSecretKey(data.encrypted_secret_key);
-        console.log('🔓 Secret key decrypted successfully, length:', decryptedSecretKey.length);
       } else {
-        console.log('⚠️ No encrypted secret key found in database');
       }
     } catch (decryptError) {
-      console.error('❌ Error decrypting secret key:', decryptError);
       decryptedSecretKey = '';
     }
 
@@ -320,17 +278,9 @@ export const getPoolWalletData = async (poolAddress: string) => {
       hasPrivateKey: data.has_private_key && decryptedSecretKey !== '',
     };
 
-    console.log('✅ Final wallet data returned:', {
-      publicKey: walletData.publicKey,
-      hasSecretKey: !!(walletData.secretKey && walletData.secretKey.trim() !== ''),
-      hasPrivateKey: walletData.hasPrivateKey,
-      secretKeyLength: walletData.secretKey ? walletData.secretKey.length : 0,
-    });
-
     return walletData;
   }
   
-  console.log('❌ No wallet data found in Supabase for pool:', poolAddress);
   return null;
 };
 
@@ -346,7 +296,6 @@ export const getAdminSettings = async (userWallet: string): Promise<AdminSetting
   return data;
 };
 
-// CRITICAL FIX: Get global platform branding from any admin user (for display when no wallet connected)
 export const getGlobalPlatformBranding = async (): Promise<{
   platform_name: string;
   platform_description: string;
@@ -356,9 +305,6 @@ export const getGlobalPlatformBranding = async (): Promise<{
   network?: 'devnet' | 'mainnet-beta';
 } | null> => {
   try {
-    console.log('🌍 Fetching global platform branding from admin_settings...');
-    
-    // Get the most recent admin settings that have platform branding configured
     const { data, error } = await supabase
       .from('admin_settings')
       .select('platform_name, platform_description, platform_icon, platform_active, maintenance_message, network')
@@ -370,12 +316,10 @@ export const getGlobalPlatformBranding = async (): Promise<{
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching global platform branding:', error);
       return null;
     }
 
     if (data) {
-      console.log('✅ Global platform branding found:', data);
       return {
         platform_name: data.platform_name || 'Swapper',
         platform_description: data.platform_description || 'Real NFT Exchange',
@@ -386,10 +330,8 @@ export const getGlobalPlatformBranding = async (): Promise<{
       };
     }
 
-    console.log('⚠️ No global platform branding found');
     return null;
   } catch (error) {
-    console.error('❌ Error in getGlobalPlatformBranding:', error);
     return null;
   }
 };
@@ -448,9 +390,7 @@ export const saveApiConfig = async (config: Omit<ApiConfig, 'id' | 'created_at' 
   return data;
 };
 
-// ENHANCED: Complete localStorage cleanup
 export const cleanupLocalStorage = () => {
-  console.log('🧹 Performing COMPLETE localStorage cleanup...');
   
   // Get all localStorage keys
   const allKeys = [];
@@ -459,9 +399,6 @@ export const cleanupLocalStorage = () => {
     if (key) allKeys.push(key);
   }
   
-  console.log('Found localStorage keys:', allKeys);
-  
-  // Remove ALL swapper-related keys
   const swapperKeys = allKeys.filter(key => 
     key.includes('swapper') || 
     key.includes('pool') || 
@@ -470,13 +407,11 @@ export const cleanupLocalStorage = () => {
     key.includes('wallet') ||
     key.includes('network') ||
     key.includes('program') ||
-    // DON'T remove platform branding - these are our dynamic defaults
     false // key.includes('platform_')
   );
   
   swapperKeys.forEach(key => {
     localStorage.removeItem(key);
-    console.log(`🗑️ Removed ${key} from localStorage`);
   });
   
   // Also remove any remaining specific keys
@@ -488,23 +423,18 @@ export const cleanupLocalStorage = () => {
     'swapper_program_id',
     'swapper-collection.json',
     '.swapper-wallet.json'
-    // DON'T remove: 'platform_name', 'platform_description', 'platform_icon'
   ];
   
   specificKeys.forEach(key => {
     if (localStorage.getItem(key)) {
       localStorage.removeItem(key);
-      console.log(`🗑️ Removed specific key: ${key}`);
     }
   });
   
-  console.log('✅ Complete localStorage cleanup finished');
 };
 
-// ENHANCED: Remove any default/test pools from database
 const removeTestPools = async () => {
   try {
-    console.log('🧹 Removing test pools from database...');
     
     // Remove SwapperCollection and other test pools
     const testPoolIds = [
@@ -525,24 +455,16 @@ const removeTestPools = async () => {
         .eq('collection_id', poolId);
       
       if (error) {
-        console.log(`Pool ${poolId} not found or already deleted`);
       } else {
-        console.log(`✅ Removed test pool: ${poolId}`);
       }
     }
     
-    console.log('✅ Test pool cleanup completed');
   } catch (error) {
-    console.error('Error removing test pools:', error);
   }
 };
 
-// Migration utilities - ENHANCED
 export const migrateFromLocalStorage = async (userWallet: string) => {
   try {
-    console.log('🔄 Starting ENHANCED migration from localStorage to Supabase...');
-
-    // FIRST: Clean up any existing test data
     await removeTestPools();
     
     // Check if migration is needed
@@ -551,7 +473,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
                         localStorage.getItem('swapper_api_config');
     
     if (!hasLocalData) {
-      console.log('No localStorage data found, performing cleanup only');
       cleanupLocalStorage();
       return false;
     }
@@ -570,9 +491,7 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
           helius_api_key: settings.heliusApiKey || 'd260d547-850c-4cb6-8412-9c764f0c9df1',
           network: settings.network || 'devnet',
         });
-        console.log('✅ Admin settings migrated');
       } catch (error) {
-        console.error('Error migrating admin settings:', error);
       }
     }
 
@@ -587,9 +506,7 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
           helius_rpc: config.heliusRpc || 'https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1',
           network: config.network || 'devnet',
         });
-        console.log('✅ API config migrated');
       } catch (error) {
-        console.error('Error migrating API config:', error);
       }
     }
 
@@ -601,7 +518,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
         for (const [collectionId, pool] of Object.entries(poolsData)) {
           // Skip test pools
           if (collectionId.includes('test') || collectionId.includes('swapper-collection')) {
-            console.log(`Skipping test pool: ${collectionId}`);
             continue;
           }
           
@@ -610,7 +526,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
           // Check if pool already exists
           const existingPool = await getPool(collectionId);
           if (existingPool) {
-            console.log(`Pool ${collectionId} already exists, skipping`);
             continue;
           }
           
@@ -634,9 +549,7 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
             await storePoolWallet(poolConfig.poolAddress, poolConfig.poolWalletData);
           }
         }
-        console.log('✅ Pools migrated (test pools skipped)');
       } catch (error) {
-        console.error('Error migrating pools:', error);
       }
     }
 
@@ -648,7 +561,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
         
         // Skip if it looks like a test pool address
         if (poolAddress.includes('test') || poolAddress.includes('SwapPool')) {
-          console.log(`Skipping test pool wallet: ${poolAddress}`);
           continue;
         }
         
@@ -662,7 +574,6 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
               hasPrivateKey: true,
             });
           } catch (error) {
-            console.error(`Error migrating wallet data for ${poolAddress}:`, error);
           }
         }
       }
@@ -671,25 +582,16 @@ export const migrateFromLocalStorage = async (userWallet: string) => {
     // FINAL: Complete cleanup after migration
     cleanupLocalStorage();
 
-    console.log('🎉 Enhanced migration completed successfully!');
     return true;
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    // Still clean up localStorage even if migration fails
     cleanupLocalStorage();
     throw error;
   }
 };
 
-// Force cleanup function for admin use
 export const forceCleanup = async () => {
-  console.log('🧹 FORCE CLEANUP: Removing all test data...');
-  
-  // Clean localStorage
   cleanupLocalStorage();
   
-  // Clean database test pools
   await removeTestPools();
   
-  console.log('✅ Force cleanup completed');
 };

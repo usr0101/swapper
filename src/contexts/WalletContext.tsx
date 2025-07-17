@@ -64,7 +64,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [migrationCompleted, setMigrationCompleted] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   
-  // Platform branding state
   const [platformName, setPlatformName] = useState(() => {
     return 'Swapper';
   });
@@ -77,19 +76,16 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [brandingLoaded, setBrandingLoaded] = useState(false);
   const [brandingLoading, setBrandingLoading] = useState(false);
 
-  // SECURITY FIX: Validate admin address from environment with proper fallback
   const getAdminAddress = () => {
     const envAdminAddress = import.meta.env.VITE_ADMIN_WALLET;
     
     // Validate the environment variable
     if (!envAdminAddress || envAdminAddress === 'your_admin_wallet_address_here') {
-      console.warn('⚠️ VITE_ADMIN_WALLET not properly configured, using fallback');
       return 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
     }
     
     // Validate it's a proper Solana address format
     if (envAdminAddress.length < 32 || envAdminAddress.length > 44) {
-      console.warn('⚠️ Invalid admin wallet address format, using fallback');
       return 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
     }
     
@@ -103,7 +99,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     const isValid = validateEnvironment();
     if (!isValid) {
-      console.warn('⚠️ Please check your environment configuration in .env file');
     }
   }, []);
 
@@ -115,25 +110,21 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Update HTML meta tags when branding changes
   useEffect(() => {
     if (brandingLoaded && typeof window !== 'undefined') {
-      // Update meta tags using the global function
       if (window.updateMetaTags) {
         window.updateMetaTags(platformName, platformDescription, platformIcon);
       }
       
-      // Dispatch custom event for any other listeners
       window.dispatchEvent(new CustomEvent('platformBrandingUpdated', {
         detail: { platformName, platformDescription, platformIcon }
       }));
     }
   }, [platformName, platformDescription, platformIcon, brandingLoaded]);
 
-  // Load platform branding from database and update defaults
   useEffect(() => {
     const loadGlobalBranding = async () => {
       try {
         setBrandingLoading(true);
         
-        // Try to load from localStorage as cache
         const cachedName = localStorage.getItem('platform_name');
         const cachedDescription = localStorage.getItem('platform_description');
         const cachedIcon = localStorage.getItem('platform_icon');
@@ -147,17 +138,14 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const branding = await getGlobalPlatformBranding();
         
         if (branding) {
-          // Update current state with database values
           setPlatformName(branding.platform_name);
           setPlatformDescription(branding.platform_description);
           setPlatformIcon(branding.platform_icon);
           
-          // Update localStorage cache for next app load
           localStorage.setItem('platform_name', branding.platform_name);
           localStorage.setItem('platform_description', branding.platform_description);
           localStorage.setItem('platform_icon', branding.platform_icon);
           
-          // Also update other platform settings if available
           if (branding.platform_active !== undefined) {
             setPlatformActiveState(branding.platform_active);
           }
@@ -168,7 +156,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setNetwork(branding.network);
           }
         } else {
-          // If no cached values and no database values, use hardcoded defaults
           if (!cachedName || !cachedDescription || !cachedIcon) {
             localStorage.setItem('platform_name', 'Swapper');
             localStorage.setItem('platform_description', 'Real NFT Exchange');
@@ -176,9 +163,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
         }
       } catch (error) {
-        console.error('Error loading platform branding from database:', error);
         
-        // On error, try to use cached values
         const cachedName = localStorage.getItem('platform_name');
         const cachedDescription = localStorage.getItem('platform_description');
         const cachedIcon = localStorage.getItem('platform_icon');
@@ -197,14 +182,12 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     loadGlobalBranding();
   }, []);
 
-  // Auto-reconnect wallet on page reload
   useEffect(() => {
     const handleAutoConnect = async () => {
       if (!connected && publicKey) {
         try {
           await solanaConnect();
         } catch (error) {
-          // Auto-connect failed
         }
       }
     };
@@ -213,7 +196,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return () => clearTimeout(timer);
   }, []);
 
-  // Load settings immediately when wallet connects
   useEffect(() => {
     if (connected && publicKey) {
       loadSettingsFromSupabase();
@@ -224,10 +206,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!publicKey) return;
 
     try {
-      // Always clean localStorage first
       cleanupLocalStorage();
 
-      // Try to migrate from localStorage if needed (but skip test data)
       if (!migrationCompleted) {
         try {
           await migrateFromLocalStorage(publicKey.toString());
@@ -237,7 +217,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       }
 
-      // Load admin settings (but don't override global branding unless this user has different settings)
       const settings = await getAdminSettings(publicKey.toString());
       
       if (settings) {
@@ -248,21 +227,17 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setNetwork(settings.network);
       }
 
-      // Load API config
       const config = await getApiConfig(publicKey.toString());
       if (config) {
         setApiConfig(config);
         setNetwork(config.network);
       }
 
-      // Mark settings as loaded
       setSettingsLoaded(true);
 
-      // Refresh balance
       refreshBalance();
 
     } catch (error) {
-      console.error('Error loading settings from Supabase:', error);
       setSettingsLoaded(true);
     }
   };
@@ -273,7 +248,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const newBalance = await getUserBalance(publicKey);
         setBalance(newBalance);
       } catch (error) {
-        console.error('Error fetching balance:', error);
         setBalance(0);
       }
     }
@@ -283,7 +257,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       await solanaConnect();
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
     }
   };
 
@@ -296,10 +269,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setMigrationCompleted(false);
       setSettingsLoaded(false);
       
-      // Clean up on disconnect
       cleanupLocalStorage();
     } catch (error) {
-      console.error('Failed to disconnect wallet:', error);
     }
   };
 
@@ -319,7 +290,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const getHeliusApiKey = () => {
-    // Get from environment variable first, then fallback to user config
     const envApiKey = import.meta.env.VITE_HELIUS_API_KEY;
     if (envApiKey && envApiKey !== 'your_helius_api_key_here') {
       return envApiKey;
@@ -334,24 +304,19 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return `https://${heliusNetwork}.helius-rpc.com/?api-key=${apiKey}`;
   };
 
-  // Force cleanup function for admin
   const handleForceCleanup = async () => {
     if (isAdmin) {
       await forceCleanup();
       
-      // Reload the page to ensure clean state
       window.location.reload();
     }
   };
 
-  // Update platform branding and persist immediately
   const updatePlatformBranding = (name: string, description: string, icon: string) => {
-    // Update local state immediately
     setPlatformName(name);
     setPlatformDescription(description);
     setPlatformIcon(icon);
     
-    // Update localStorage defaults immediately
     localStorage.setItem('platform_name', name);
     localStorage.setItem('platform_description', description);
     localStorage.setItem('platform_icon', icon);
@@ -389,7 +354,6 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 };
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  // Get network from environment variable
   const [currentNetwork, setCurrentNetwork] = useState<'devnet' | 'mainnet-beta'>(() => {
     const envNetwork = import.meta.env.VITE_SOLANA_NETWORK;
     return (envNetwork === 'mainnet-beta') ? 'mainnet-beta' : 'devnet';
@@ -398,7 +362,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const network = currentNetwork === 'devnet' ? WalletAdapterNetwork.Devnet : WalletAdapterNetwork.Mainnet;
 
   const endpoint = useMemo(() => {
-    // SECURITY FIX: Validate environment variables before using them
     const heliusApiKey = import.meta.env.VITE_HELIUS_API_KEY;
     
     if (currentNetwork === 'mainnet-beta') {
@@ -408,7 +371,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
       return clusterApiUrl('mainnet-beta');
     } else {
-      // For devnet, use Helius if available and properly configured
       if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here' && heliusApiKey.length > 10) {
         return `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`;
       }

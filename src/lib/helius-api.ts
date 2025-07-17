@@ -1,7 +1,6 @@
 import { Connection } from '@solana/web3.js';
 import { getApiConfig } from './supabase';
 
-// Dynamic Helius API configuration that updates based on network
 const getHeliusConfig = async (userWallet?: string) => {
   try {
     if (userWallet) {
@@ -15,7 +14,6 @@ const getHeliusConfig = async (userWallet?: string) => {
       }
     }
   } catch (error) {
-    console.error('Error loading Helius config from Supabase:', error);
   }
   
   // Default to devnet
@@ -26,7 +24,6 @@ const getHeliusConfig = async (userWallet?: string) => {
   };
 };
 
-// Get current network from Supabase or default to devnet
 const getCurrentNetwork = async (userWallet?: string): Promise<'devnet' | 'mainnet'> => {
   try {
     if (userWallet) {
@@ -39,17 +36,14 @@ const getCurrentNetwork = async (userWallet?: string): Promise<'devnet' | 'mainn
   return 'devnet';
 };
 
-// Dynamic Helius RPC URL that updates based on current network
 const getHeliusRpcUrl = async (userWallet?: string) => {
   const config = await getHeliusConfig(userWallet);
   const network = config.network === 'mainnet-beta' ? 'mainnet' : 'devnet';
   return `https://${network}.helius-rpc.com/?api-key=${config.apiKey}`;
 };
 
-// Enhanced connection with dynamic Helius endpoint
 export const heliusConnection = new Connection('https://devnet.helius-rpc.com/?api-key=d260d547-850c-4cb6-8412-9c764f0c9df1', 'confirmed');
 
-// Update connection when network changes
 export const updateHeliusConnection = async (userWallet?: string) => {
   const newRpcUrl = await getHeliusRpcUrl(userWallet);
   return new Connection(newRpcUrl, 'confirmed');
@@ -94,7 +88,6 @@ export const getWalletNFTs = async (walletAddress: string, userWallet?: string) 
     
     return [];
   } catch (error) {
-    console.error('Error fetching NFTs from Helius:', error);
     return [];
   }
 };
@@ -124,7 +117,6 @@ const getCollectionInfo = async (collectionAddress: string, userWallet?: string)
     const data = await response.json();
     return data.result;
   } catch (error) {
-    console.error('Error fetching collection info:', error);
     return null;
   }
 };
@@ -151,7 +143,6 @@ const getAssetDetails = async (mintAddress: string, userWallet?: string) => {
     const data = await response.json();
     return data.result ? formatHeliusNFT(data.result) : null;
   } catch (error) {
-    console.error('Error fetching asset details:', error);
     return null;
   }
 };
@@ -403,7 +394,6 @@ export const getWalletBalance = async (walletAddress: string, userWallet?: strin
     const data = await response.json();
     return data.result ? data.result.value / 1e9 : 0;
   } catch (error) {
-    console.error('Error fetching wallet balance:', error);
     return 0;
   }
 };
@@ -437,7 +427,6 @@ export const searchNFTByMint = async (mintAddress: string, userWallet?: string) 
     
     return null;
   } catch (error) {
-    console.error('Error searching NFT by mint:', error);
     return null;
   }
 };
@@ -463,7 +452,6 @@ const validateCollection = async (address: string, userWallet?: string) => {
     const collectionInfo = await getCollectionInfo(address, userWallet);
     return collectionInfo && collectionInfo.total > 0;
   } catch (error) {
-    console.error('Error validating collection:', error);
     return false;
   }
 };
