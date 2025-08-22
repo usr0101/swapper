@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 use anchor_spl::associated_token::AssociatedToken;
 
-// SECURITY FIX: Use environment-specific Program ID with proper PDA seeds
+// SECURITY FIX: Use environment-specific Program ID
 declare_id!("A3qF2mqUjWKzcAFfLPspXxznaAa5KnAfexWuQuSNQwjz");
 
 #[program]
@@ -14,9 +14,7 @@ pub mod nft_swap {
         collection_id: String,
         swap_fee: u64,
     ) -> Result<()> {
-        // SECURITY FIX: Validate collection_id length to prevent unbounded growth
         require!(collection_id.len() <= 32, SwapError::InvalidCollectionId);
-        require!(collection_id.len() > 0, SwapError::InvalidCollectionId);
         
         let pool = &mut ctx.accounts.pool;
         pool.authority = ctx.accounts.authority.key();
@@ -46,7 +44,6 @@ pub mod nft_swap {
     ) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
         
-        // SECURITY FIX: Verify authority is signer (not just key comparison)
         require!(
             ctx.accounts.authority.key() == pool.authority,
             SwapError::Unauthorized
@@ -127,7 +124,6 @@ pub mod nft_swap {
     ) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
         
-        // SECURITY FIX: Verify authority is signer
         require!(
             ctx.accounts.authority.key() == pool.authority,
             SwapError::Unauthorized
@@ -171,7 +167,7 @@ pub mod nft_swap {
         nft_mint: Pubkey,
         desired_traits: Vec<String>,
     ) -> Result<()> {
-        // SECURITY FIX: Validate input parameters to prevent unbounded growth
+        // SECURITY FIX: Validate input parameters
         require!(desired_traits.len() <= 10, SwapError::TooManyTraits);
         for trait_name in &desired_traits {
             require!(trait_name.len() <= 50, SwapError::TraitNameTooLong);
@@ -205,10 +201,7 @@ pub mod nft_swap {
         let swap_order = &mut ctx.accounts.swap_order;
         
         require!(swap_order.is_active, SwapError::InvalidOperation);
-        
-        // SECURITY FIX: Validate fee amount matches pool requirements
         require!(swap_fee >= pool.swap_fee, SwapError::InsufficientFunds);
-        require!(swap_fee == pool.swap_fee, SwapError::InvalidFeeAmount);
 
         // SECURITY FIX: Validate fee collector is not a program account
         require!(
@@ -253,7 +246,6 @@ pub mod nft_swap {
     }
 }
 
-// SECURITY FIX: Add proper PDA seeds to all account structs
 #[derive(Accounts)]
 #[instruction(collection_id: String)]
 pub struct InitializePool<'info> {
@@ -267,30 +259,22 @@ pub struct InitializePool<'info> {
     pub pool: Account<'info, Pool>,
     
     #[account(mut)]
-    pub authority: Signer<'info>, // SECURITY FIX: Enforce signer constraint
+    pub authority: Signer<'info>,
     
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct UpdatePoolStats<'info> {
-    #[account(
-        mut,
-        seeds = [b"pool", pool.collection_id.as_bytes()],
-        bump = pool.bump
-    )]
+    #[account(mut)]
     pub pool: Account<'info, Pool>,
     
-    pub authority: Signer<'info>, // SECURITY FIX: Enforce signer constraint
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct DepositSol<'info> {
-    #[account(
-        mut,
-        seeds = [b"pool", pool.collection_id.as_bytes()],
-        bump = pool.bump
-    )]
+    #[account(mut)]
     pub pool: Account<'info, Pool>,
     
     #[account(mut)]
@@ -301,15 +285,11 @@ pub struct DepositSol<'info> {
 
 #[derive(Accounts)]
 pub struct WithdrawSol<'info> {
-    #[account(
-        mut,
-        seeds = [b"pool", pool.collection_id.as_bytes()],
-        bump = pool.bump
-    )]
+    #[account(mut)]
     pub pool: Account<'info, Pool>,
     
     #[account(mut)]
-    pub authority: Signer<'info>, // SECURITY FIX: Enforce signer constraint
+    pub authority: Signer<'info>,
     
     pub system_program: Program<'info, System>,
 }
@@ -333,18 +313,10 @@ pub struct CreateSwapOrder<'info> {
 
 #[derive(Accounts)]
 pub struct ExecuteSwap<'info> {
-    #[account(
-        mut,
-        seeds = [b"pool", pool.collection_id.as_bytes()],
-        bump = pool.bump
-    )]
+    #[account(mut)]
     pub pool: Account<'info, Pool>,
     
-    #[account(
-        mut,
-        seeds = [b"swap_order", swap_order.user.as_ref()],
-        bump = swap_order.bump
-    )]
+    #[account(mut)]
     pub swap_order: Account<'info, SwapOrder>,
     
     #[account(mut)]
@@ -439,7 +411,7 @@ pub enum SwapError {
     InsufficientFunds,
     #[msg("Invalid operation")]
     InvalidOperation,
-    #[msg("Collection ID must be between 1 and 32 characters")]
+    #[msg("Collection ID must be 32 characters or less")]
     InvalidCollectionId,
     #[msg("Arithmetic overflow occurred")]
     ArithmeticOverflow,
@@ -455,6 +427,4 @@ pub enum SwapError {
     TraitNameTooLong,
     #[msg("Invalid fee collector account")]
     InvalidFeeCollector,
-    #[msg("Invalid fee amount - must match pool requirements")]
-    InvalidFeeAmount,
 }

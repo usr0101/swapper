@@ -77,26 +77,8 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [brandingLoaded, setBrandingLoaded] = useState(false);
   const [brandingLoading, setBrandingLoading] = useState(false);
 
-  // SECURITY FIX: Validate admin address from environment with proper fallback
-  const getAdminAddress = () => {
-    const envAdminAddress = import.meta.env.VITE_ADMIN_WALLET;
-    
-    // Validate the environment variable
-    if (!envAdminAddress || envAdminAddress === 'your_admin_wallet_address_here') {
-      console.warn('⚠️ VITE_ADMIN_WALLET not properly configured, using fallback');
-      return 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
-    }
-    
-    // Validate it's a proper Solana address format
-    if (envAdminAddress.length < 32 || envAdminAddress.length > 44) {
-      console.warn('⚠️ Invalid admin wallet address format, using fallback');
-      return 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
-    }
-    
-    return envAdminAddress;
-  };
-
-  const ADMIN_ADDRESS = getAdminAddress();
+  // Get admin address from environment variable
+  const ADMIN_ADDRESS = import.meta.env.VITE_ADMIN_WALLET || 'J1Fmahkhu93MFojv3Ycq31baKCkZ7ctVLq8zm3gFF3M';
   const isAdmin = publicKey?.toString() === ADMIN_ADDRESS;
 
   // Validate environment on startup
@@ -219,6 +201,7 @@ const WalletContextProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       loadSettingsFromSupabase();
     }
   }, [connected, publicKey]);
+
 
   const loadSettingsFromSupabase = async () => {
     if (!publicKey) return;
@@ -398,18 +381,18 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const network = currentNetwork === 'devnet' ? WalletAdapterNetwork.Devnet : WalletAdapterNetwork.Mainnet;
 
   const endpoint = useMemo(() => {
-    // SECURITY FIX: Validate environment variables before using them
+    // Use environment-specific RPC endpoints
     const heliusApiKey = import.meta.env.VITE_HELIUS_API_KEY;
     
     if (currentNetwork === 'mainnet-beta') {
-      // For mainnet, use Helius if available and properly configured
-      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here' && heliusApiKey.length > 10) {
+      // For mainnet, use Helius if available, otherwise fallback to public RPC
+      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here') {
         return `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
       }
       return clusterApiUrl('mainnet-beta');
     } else {
-      // For devnet, use Helius if available and properly configured
-      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here' && heliusApiKey.length > 10) {
+      // For devnet, use Helius if available, otherwise fallback to public RPC
+      if (heliusApiKey && heliusApiKey !== 'your_helius_api_key_here') {
         return `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`;
       }
       return clusterApiUrl('devnet');
