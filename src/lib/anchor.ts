@@ -22,8 +22,13 @@ const getProgramId = (): PublicKey => {
   return PROGRAM_IDS.devnet;
 };
 
+// SECURITY FIX: Remove mutable program ID functions
+// These functions have been removed to prevent runtime program ID injection:
+// - updateProgramId()
+// - loadStoredProgramId()
+
 // SECURITY FIX: Dynamic connection based on environment with proper validation
-const getConnection = (): Connection => {
+const getConnection = () => {
   const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
   
   // Validate network value
@@ -60,20 +65,20 @@ const getConnection = (): Connection => {
 const connection = getConnection();
 
 // Get Anchor provider
-const getProvider = (wallet: AnchorWallet): AnchorProvider => {
+const getProvider = (wallet: AnchorWallet) => {
   return new AnchorProvider(connection, wallet, {
     commitment: 'confirmed',
   });
 };
 
 // Get program instance
-const getProgram = (wallet: AnchorWallet): Program<NftSwap> => {
+const getProgram = (wallet: AnchorWallet) => {
   const provider = getProvider(wallet);
   return new Program<NftSwap>(IDL, getProgramId(), provider);
 };
 
 // Helper function to get pool PDA
-const getPoolPDA = (collectionId: string): [PublicKey, number] => {
+const getPoolPDA = (collectionId: string) => {
   return PublicKey.findProgramAddressSync(
     [Buffer.from('pool'), Buffer.from(collectionId)],
     getProgramId()
@@ -81,7 +86,7 @@ const getPoolPDA = (collectionId: string): [PublicKey, number] => {
 };
 
 // Helper function to get swap order PDA
-const getSwapOrderPDA = (user: PublicKey): [PublicKey, number] => {
+const getSwapOrderPDA = (user: PublicKey) => {
   return PublicKey.findProgramAddressSync(
     [Buffer.from('swap_order'), user.toBuffer()],
     getProgramId()
@@ -92,20 +97,20 @@ const getSwapOrderPDA = (user: PublicKey): [PublicKey, number] => {
 const getAssociatedTokenAccount = async (
   mint: PublicKey,
   owner: PublicKey
-): Promise<PublicKey> => {
+) => {
   const { getAssociatedTokenAddress } = await import('@solana/spl-token');
   return await getAssociatedTokenAddress(mint, owner);
 };
 
 // Get current program ID (read-only)
-export const getCurrentProgramId = (): string => getProgramId().toString();
+export const getCurrentProgramId = () => getProgramId().toString();
 
 // Get current network
-const getCurrentNetwork = (): string => import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+const getCurrentNetwork = () => import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
 
 // SECURITY FIX: Enhanced environment validation
-export const validateEnvironment = (): boolean => {
-  const issues: string[] = [];
+export const validateEnvironment = () => {
+  const issues = [];
   
   const programId = getCurrentProgramId();
   if (!programId || programId === '11111111111111111111111111111111') {
@@ -142,7 +147,7 @@ export const validateEnvironment = (): boolean => {
 };
 
 // Export helper functions
-export { getProgram, getProvider, getPoolPDA, getSwapOrderPDA, getAssociatedTokenAccount, connection };
+export { getProgram, getProvider, getPoolPDA, getSwapOrderPDA, getAssociatedTokenAccount };
 
 // Updated IDL for the deployed program
 const IDL = {
@@ -325,4 +330,4 @@ const IDL = {
     { "code": 6010, "name": "InvalidFeeCollector", "msg": "Invalid fee collector account" },
     { "code": 6011, "name": "InvalidFeeAmount", "msg": "Invalid fee amount - must match pool requirements" }
   ]
-} as const;
+};
